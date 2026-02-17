@@ -268,11 +268,13 @@
         const gameOverlay = document.getElementById('gameOverlay');
         const finalScoreElement = document.getElementById('finalScore');
 
-        // Set responsive canvas size
+        // Set responsive canvas size - ensure exact fit for 20x20 grid
         function setCanvasSize() {
             const maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 300, 600);
-            canvas.width = maxSize;
-            canvas.height = maxSize;
+            // Round down to nearest multiple of 20 for perfect grid alignment
+            const adjustedSize = Math.floor(maxSize / 20) * 20;
+            canvas.width = adjustedSize;
+            canvas.height = adjustedSize;
         }
 
         setCanvasSize();
@@ -281,15 +283,29 @@
             draw();
         });
 
-        // Game settings - dynamically calculate based on canvas size
+        // Game settings - CORRECT GRID CALCULATION
         function getGameSettings() {
-            const gridSize = Math.floor(canvas.width / 30); // 30x30 grid
-            const tileCount = canvas.width / gridSize;
+            const tileCount = 20; // Fixed 20x20 grid
+            const gridSize = Math.floor(canvas.width / tileCount); // Integer size for each cell
             return { gridSize, tileCount };
         }
 
+        // Fruit types with different point values
+        const fruitTypes = [
+            { emoji: '🍒', points: 1, color: '#ff0066' },     // Cherry
+            { emoji: '🍓', points: 2, color: '#ff3300' },     // Strawberry
+            { emoji: '🍊', points: 3, color: '#ff6600' },     // Orange
+            { emoji: '🥝', points: 4, color: '#66ff00' },     // Kiwi
+            { emoji: '🍇', points: 5, color: '#9900ff' },     // Grapes
+            { emoji: '🍉', points: 6, color: '#00ff99' },     // Watermelon
+            { emoji: '🍑', points: 7, color: '#ffcc00' },     // Peach
+            { emoji: '🥭', points: 8, color: '#ffcc00' },     // Mango
+            { emoji: '🍍', points: 9, color: '#ffff00' },     // Pineapple
+            { emoji: '🥥', points: 10, color: '#8b4513' }     // Coconut
+        ];
+
         let snake = [
-            {x: 10, y: 10}
+            {x: 10, y: 10, fruit: null} // Starting position - center of 20x20 grid
         ];
         let direction = {x: 0, y: 0};
         let food = {};
@@ -301,6 +317,17 @@
         highScoreElement.textContent = highScore;
         generateFood();
 
+        // Debug: Log initial state
+        console.log('Game initialized', {
+            canvasSize: canvas.width,
+            gridSize: getGameSettings().gridSize,
+            tileCount: getGameSettings().tileCount,
+            snakeStart: snake[0]
+        });
+
+        // Immediately draw once to verify visibility
+        draw();
+
         // Game loop
         function gameLoop() {
             if (!gameRunning) return;
@@ -308,7 +335,7 @@
             update();
             draw();
 
-            setTimeout(gameLoop, 100);
+            setTimeout(gameLoop, 150); // Slower speed (was 100ms)
         }
 
         function update() {
@@ -336,79 +363,120 @@
                 }
             }
 
-            snake.unshift(head);
+            // Standard snake movement: unshift new head
+            snake.unshift({...head, fruit: null});
 
             // Check food collision
             if (head.x === food.x && head.y === food.y) {
-                score++;
+                // Add points based on fruit type
+                score += food.points;
                 updateScore();
                 createParticles();
+
+                // Set the fruit at the head (where it was eaten)
+                snake[0].fruit = food;
+
                 generateFood();
             } else {
+                // Remove tail segment
                 snake.pop();
             }
+
+            // Shift fruits through the snake body (move them backward/toward tail)
+            for (let i = snake.length - 1; i > 0; i--) {
+                snake[i].fruit = snake[i - 1].fruit;
+            }
+            snake[0].fruit = null;
         }
 
         function draw() {
-            const { gridSize } = getGameSettings();
+            const { gridSize, tileCount } = getGameSettings();
 
-            // Clear canvas
-            ctx.fillStyle = '#000';
+            // MAXIMUM VISIBILITY: Pure white background
+            ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw snake
-            snake.forEach((segment, index) => {
-                const gradient = ctx.createLinearGradient(
-                    segment.x * gridSize, segment.y * gridSize,
-                    (segment.x + 1) * gridSize, (segment.y + 1) * gridSize
-                );
+            // Draw complete grid without gaps - each cell is a solid block
+            ctx.strokeStyle = '#d0d0d0';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#ffffff';
 
-                if (index === 0) {
-                    // Head with brighter color
-                    gradient.addColorStop(0, '#00ffff');
-                    gradient.addColorStop(1, '#ff00ff');
-                } else {
-                    // Body segments
-                    gradient.addColorStop(0, '#00aaaa');
-                    gradient.addColorStop(1, '#aa00aa');
+            for (let y = 0; y < tileCount; y++) {
+                for (let x = 0; x < tileCount; x++) {
+                    // Draw each cell with border
+                    const xPos = x * gridSize;
+                    const yPos = y * gridSize;
+
+                    // Fill cell background
+                    ctx.fillRect(xPos, yPos, gridSize, gridSize);
+
+                    // Draw cell border
+                    ctx.strokeRect(xPos, yPos, gridSize, gridSize);
                 }
+            }
 
-                ctx.fillStyle = gradient;
+            console.log('Drawing snake, segments:', snake.length);
+
+            // Draw snake with MAXIMUM CONTRAST - BLACK on WHITE
+            snake.forEach((segment, index) => {
+                console.log(`Drawing segment ${index} at`, segment);
+
+                // BLACK snake segments for maximum visibility
+                ctx.fillStyle = '#000000';
                 ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                // Add glow effect
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#00ffff';
-                ctx.fillRect(segment.x * gridSize + 4, segment.y * gridSize + 4, gridSize - 8, gridSize - 8);
-                ctx.shadowBlur = 0;
+                // White border around segments
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                // Add fruit if present - COLORED EMOJI on WHITE BACKGROUND
+                if (segment.fruit && segment.fruit.emoji) {
+                    // Draw white background for fruit
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                    // Draw fruit emoji
+                    ctx.font = `${gridSize * 0.7}px Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(segment.fruit.emoji, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                }
             });
 
-            // Draw food
-            const foodGradient = ctx.createRadialGradient(
-                food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, 0,
-                food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2
-            );
-            foodGradient.addColorStop(0, '#ffff00');
-            foodGradient.addColorStop(1, '#ffaa00');
+            // Draw food with fruit emoji - NO BORDER
+            if (food.emoji) {
+                // Draw white background for fruit emoji
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-            ctx.fillStyle = foodGradient;
-            ctx.beginPath();
-            ctx.arc(food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
-            ctx.fill();
+                // Draw fruit emoji - LARGEST SIZE for clarity
+                ctx.font = `${gridSize * 0.8}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#000000'; // Black text
+                ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
 
-            // Add glow
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = '#ffff00';
-            ctx.fill();
-            ctx.shadowBlur = 0;
+                // Draw point value
+                if (food.points > 1) {
+                    ctx.font = `${Math.min(gridSize * 0.3, 14)}px Orbitron, monospace`;
+                    ctx.fillStyle = '#000000';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(food.points + 'pts', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize - 3);
+                }
+            }
         }
 
         function generateFood() {
             const { tileCount } = getGameSettings();
+            const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
 
             food = {
                 x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount)
+                y: Math.floor(Math.random() * tileCount),
+                ...randomFruit
             };
 
             // Ensure food doesn't spawn on snake
@@ -447,7 +515,7 @@
 
         function restartGame() {
             setCanvasSize(); // Recalculate canvas size on restart
-            snake = [{x: 10, y: 10}];
+            snake = [{x: 10, y: 10, fruit: null}];
             direction = {x: 0, y: 0};
             score = 0;
             updateScore();
@@ -465,23 +533,41 @@
                 y: food.y * gridSize + gridSize / 2
             };
 
-            for (let i = 0; i < 12; i++) {
+            // Create more particles for better effect
+            const particleCount = 20;
+            for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 particle.style.left = foodPos.x + 'px';
                 particle.style.top = foodPos.y + 'px';
 
-                const angle = (Math.PI * 2 * i) / 12;
-                const velocity = 50 + Math.random() * 50;
-                particle.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
-                particle.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
+                // Use fruit color for particles
+                particle.style.background = food.color || '#00ffff';
+
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const velocity = 80 + Math.random() * 60;
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity;
+
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                particle.style.boxShadow = `0 0 10px ${food.color || '#00ffff'}`;
+                particle.style.width = '6px';
+                particle.style.height = '6px';
 
                 document.body.appendChild(particle);
 
                 setTimeout(() => {
                     particle.remove();
-                }, 1000);
+                }, 1200);
             }
+
+            // Add canvas-based flash effect
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = food.color || '#ffff00';
+            ctx.fillRect(food.x * gridSize - gridSize, food.y * gridSize - gridSize, gridSize * 3, gridSize * 3);
+            ctx.restore();
         }
 
         // Keyboard controls
