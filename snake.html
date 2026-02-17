@@ -120,7 +120,7 @@
             display: block;
             margin: 0 auto;
             max-width: 100%;
-            height: auto;
+            max-height: 100%;
         }
 
         .game-controls {
@@ -249,7 +249,7 @@
             </div>
         </div>
 
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <canvas id="gameCanvas"></canvas>
 
         <div class="game-controls">
             <p>Use Arrow Keys or WASD to control</p>
@@ -331,6 +331,7 @@
 
         // Initialize
         highScoreElement.textContent = highScore;
+        setCanvasSize(); // 确保初始化时设置画布尺寸
         generateFood();
 
         // Debug: Log initial state
@@ -342,6 +343,14 @@
         });
 
         // Immediately draw once to verify visibility
+        console.log('Canvas dimensions:', {
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
+            clientWidth: canvas.clientWidth,
+            clientHeight: canvas.clientHeight,
+            offsetWidth: canvas.offsetWidth,
+            offsetHeight: canvas.offsetHeight
+        });
         draw();
 
         // Game loop
