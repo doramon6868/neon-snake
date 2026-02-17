@@ -312,10 +312,11 @@
             {x: 10, y: 10, fruit: null} // Starting position - center of 20x20 grid
         ];
         let direction = {x: 0, y: 0};
-        let food = {};
+        let foods = []; // Multiple foods array
         let score = 0;
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let gameRunning = true;
+        const FOOD_COUNT = 5; // Number of foods on screen at once
 
         // Initialize
         highScoreElement.textContent = highScore;
@@ -370,20 +371,62 @@
             // Standard snake movement: unshift new head
             snake.unshift({...head, fruit: null});
 
-            // Check food collision
-            if (head.x === food.x && head.y === food.y) {
-                // Add points based on fruit type
-                score += food.points;
-                updateScore();
-                createParticles();
+            // Check food collision with all foods
+            let foodEaten = false;
+            for (let i = 0; i < foods.length; i++) {
+                if (head.x === foods[i].x && head.y === foods[i].y) {
+                    // Add points based on fruit type
+                    score += foods[i].points;
+                    updateScore();
+                    createParticles(foods[i]); // Pass the specific food
 
-                // Set the fruit at the head (where it was eaten)
-                snake[0].fruit = food;
+                    // Set the fruit at the head (where it was eaten)
+                    snake[0].fruit = foods[i];
 
-                generateFood();
-            } else {
+                    // Remove eaten food
+                    foods.splice(i, 1);
+
+                    foodEaten = true;
+                    break;
+                }
+            }
+
+            if (!foodEaten) {
                 // Remove tail segment
                 snake.pop();
+            } else {
+                // Generate a new food if we're below the target count
+                if (foods.length < FOOD_COUNT) {
+                    const { tileCount } = getGameSettings();
+                    const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+                    let newFood = {
+                        x: Math.floor(Math.random() * tileCount),
+                        y: Math.floor(Math.random() * tileCount),
+                        ...randomFruit
+                    };
+
+                    // Ensure new food doesn't spawn on snake or other foods
+                    let validPosition = true;
+                    for (let segment of snake) {
+                        if (segment.x === newFood.x && segment.y === newFood.y) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+
+                    if (validPosition) {
+                        for (let existingFood of foods) {
+                            if (existingFood.x === newFood.x && existingFood.y === newFood.y) {
+                                validPosition = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (validPosition) {
+                        foods.push(newFood);
+                    }
+                }
             }
 
             // Shift fruits through the snake body (move them backward/toward tail)
@@ -467,45 +510,73 @@
                 }
             });
 
-            // Draw food with fruit emoji - on cream background
-            if (food.emoji) {
-                // Draw cream background for fruit emoji
-                ctx.fillStyle = '#FFF9F5';
-                ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
+            // Draw all foods with fruit emoji - on cream background
+            foods.forEach(food => {
+                if (food.emoji) {
+                    // Draw cream background for fruit emoji
+                    ctx.fillStyle = '#FFF9F5';
+                    ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                // Draw fruit emoji
-                ctx.font = `${gridSize * 0.8}px Arial, sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#6B5B73'; /* 炭灰 */
-                ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
-
-                // Draw point value
-                if (food.points > 1) {
-                    ctx.font = `${Math.min(gridSize * 0.3, 14)}px Orbitron, monospace`;
-                    ctx.fillStyle = '#6B5B73'; /* 炭灰 */
+                    // Draw fruit emoji
+                    ctx.font = `${gridSize * 0.8}px Arial, sans-serif`;
                     ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    ctx.fillText(food.points + 'pts', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize - 3);
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#6B5B73'; /* 炭灰 */
+                    ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
+
+                    // Draw point value
+                    if (food.points > 1) {
+                        ctx.font = `${Math.min(gridSize * 0.3, 14)}px Orbitron, monospace`;
+                        ctx.fillStyle = '#6B5B73'; /* 炭灰 */
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(food.points + 'pts', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize - 3);
+                    }
                 }
-            }
+            });
         }
 
         function generateFood() {
             const { tileCount } = getGameSettings();
-            const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
 
-            food = {
-                x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount),
-                ...randomFruit
-            };
+            // Clear existing foods
+            foods = [];
 
-            // Ensure food doesn't spawn on snake
-            for (let segment of snake) {
-                if (segment.x === food.x && segment.y === food.y) {
-                    generateFood();
-                    return;
+            // Generate multiple foods
+            for (let i = 0; i < FOOD_COUNT; i++) {
+                const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+                let newFood = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount),
+                    ...randomFruit
+                };
+
+                // Ensure food doesn't spawn on snake or other foods
+                let validPosition = true;
+
+                // Check against snake
+                for (let segment of snake) {
+                    if (segment.x === newFood.x && segment.y === newFood.y) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+
+                // Check against other foods
+                if (validPosition) {
+                    for (let existingFood of foods) {
+                        if (existingFood.x === newFood.x && existingFood.y === newFood.y) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (validPosition) {
+                    foods.push(newFood);
+                } else {
+                    // Try again for this food
+                    i--;
                 }
             }
         }
@@ -689,11 +760,11 @@
             }
         }
 
-        function createParticles() {
+        function createParticles(eatenFood) {
             const { gridSize } = getGameSettings();
             const foodPos = {
-                x: food.x * gridSize + gridSize / 2,
-                y: food.y * gridSize + gridSize / 2
+                x: eatenFood.x * gridSize + gridSize / 2,
+                y: eatenFood.y * gridSize + gridSize / 2
             };
 
             // Select a random firework type based on fruit points
@@ -702,8 +773,8 @@
 
             // Different particle counts based on fruit value
             let particleMultiplier = 1;
-            if (food.points >= 8) particleMultiplier = 2;
-            else if (food.points >= 5) particleMultiplier = 1.5;
+            if (eatenFood.points >= 8) particleMultiplier = 2;
+            else if (eatenFood.points >= 5) particleMultiplier = 1.5;
 
             // Create canvas glow effect first
             ctx.save();
@@ -711,36 +782,36 @@
 
             // Create radial gradient for fruit glow
             const gradient = ctx.createRadialGradient(
-                food.x * gridSize + gridSize/2,
-                food.y * gridSize + gridSize/2,
+                eatenFood.x * gridSize + gridSize/2,
+                eatenFood.y * gridSize + gridSize/2,
                 0,
-                food.x * gridSize + gridSize/2,
-                food.y * gridSize + gridSize/2,
+                eatenFood.x * gridSize + gridSize/2,
+                eatenFood.y * gridSize + gridSize/2,
                 gridSize * 3
             );
-            gradient.addColorStop(0, food.color || '#FFB7B2');
+            gradient.addColorStop(0, eatenFood.color || '#FFB7B2');
             gradient.addColorStop(1, 'transparent');
 
             ctx.fillStyle = gradient;
-            ctx.fillRect(food.x * gridSize - gridSize * 2, food.y * gridSize - gridSize * 2, gridSize * 5, gridSize * 5);
+            ctx.fillRect(eatenFood.x * gridSize - gridSize * 2, eatenFood.y * gridSize - gridSize * 2, gridSize * 5, gridSize * 5);
             ctx.restore();
 
             // Execute chosen firework type
             switch(chosenType) {
                 case 'explosion':
-                    createExplosionFirework(foodPos.x, foodPos.y, food.color || '#FFB7B2', Math.floor(30 * particleMultiplier));
+                    createExplosionFirework(foodPos.x, foodPos.y, eatenFood.color || '#FFB7B2', Math.floor(30 * particleMultiplier));
                     break;
                 case 'ring':
-                    createRingFirework(foodPos.x, foodPos.y, food.color || '#FFDAC1', 2 + Math.floor(particleMultiplier));
+                    createRingFirework(foodPos.x, foodPos.y, eatenFood.color || '#FFDAC1', 2 + Math.floor(particleMultiplier));
                     break;
                 case 'spiral':
-                    createSpiralFirework(foodPos.x, foodPos.y, food.color || '#E2F0CB', Math.floor(3 * particleMultiplier));
+                    createSpiralFirework(foodPos.x, foodPos.y, eatenFood.color || '#E2F0CB', Math.floor(3 * particleMultiplier));
                     break;
                 case 'star':
-                    createStarFirework(foodPos.x, foodPos.y, food.color || '#C7CEEA');
+                    createStarFirework(foodPos.x, foodPos.y, eatenFood.color || '#C7CEEA');
                     break;
                 case 'waterfall':
-                    createWaterfallFirework(foodPos.x, foodPos.y, food.color || '#FF9AA2');
+                    createWaterfallFirework(foodPos.x, foodPos.y, eatenFood.color || '#FF9AA2');
                     break;
             }
         }
