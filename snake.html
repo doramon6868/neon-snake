@@ -198,10 +198,18 @@
             height: 4px;
             background: #00ffff;
             pointer-events: none;
-            animation: particle-fade 1s ease-out forwards;
+            animation: particle-fade 1.2s ease-out forwards;
+            border-radius: 50%;
         }
 
         @keyframes particle-fade {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            70% {
+                opacity: 0.8;
+            }
             to {
                 transform: translate(var(--tx), var(--ty)) scale(0);
                 opacity: 0;
@@ -540,23 +548,14 @@
             gameLoop(); // Start game loop again
         }
 
-        function createParticles() {
-            const { gridSize } = getGameSettings();
-            const foodPos = {
-                x: food.x * gridSize + gridSize / 2,
-                y: food.y * gridSize + gridSize / 2
-            };
-
-            // Create more particles for better effect
-            const particleCount = 20;
+        // Firework types
+        function createExplosionFirework(x, y, color, particleCount = 30) {
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
-                particle.style.left = foodPos.x + 'px';
-                particle.style.top = foodPos.y + 'px';
-
-                // Use fruit color for particles
-                particle.style.background = food.color || '#00ffff';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.background = color;
 
                 const angle = (Math.PI * 2 * i) / particleCount;
                 const velocity = 80 + Math.random() * 60;
@@ -565,23 +564,185 @@
 
                 particle.style.setProperty('--tx', tx + 'px');
                 particle.style.setProperty('--ty', ty + 'px');
-                particle.style.boxShadow = `0 0 10px ${food.color || '#00ffff'}`;
+                particle.style.boxShadow = `0 0 10px ${color}`;
                 particle.style.width = '6px';
                 particle.style.height = '6px';
 
                 document.body.appendChild(particle);
-
-                setTimeout(() => {
-                    particle.remove();
-                }, 1200);
+                setTimeout(() => particle.remove(), 1200);
             }
+        }
 
-            // Add canvas-based flash effect
+        function createRingFirework(x, y, color, rings = 3) {
+            for (let ring = 0; ring < rings; ring++) {
+                const particleCount = 20;
+                const radius = 60 + ring * 40;
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.background = color;
+                    particle.style.width = (4 - ring) + 'px';
+                    particle.style.height = (4 - ring) + 'px';
+
+                    const angle = (Math.PI * 2 * i) / particleCount;
+                    const tx = Math.cos(angle) * radius;
+                    const ty = Math.sin(angle) * radius;
+
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
+                    particle.style.boxShadow = `0 0 8px ${color}`;
+
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 1200);
+                }
+            }
+        }
+
+        function createSpiralFirework(x, y, color, arms = 4) {
+            for (let arm = 0; arm < arms; arm++) {
+                const particlesPerArm = 10;
+                const baseAngle = (Math.PI * 2 * arm) / arms;
+
+                for (let i = 0; i < particlesPerArm; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.background = color;
+                    particle.style.width = '5px';
+                    particle.style.height = '5px';
+
+                    const progress = i / particlesPerArm;
+                    const angle = baseAngle + progress * Math.PI * 4;
+                    const velocity = 50 + progress * 80;
+                    const tx = Math.cos(angle) * velocity;
+                    const ty = Math.sin(angle) * velocity;
+
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
+                    particle.style.boxShadow = `0 0 10px ${color}`;
+
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 1200);
+                }
+            }
+        }
+
+        function createStarFirework(x, y, color) {
+            const starPoints = 8;
+            const particleCount = starPoints * 4;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.background = color;
+                particle.style.width = '7px';
+                particle.style.height = '7px';
+
+                const point = Math.floor(i / 4);
+                const position = i % 4;
+                const angle = (Math.PI * 2 * point) / starPoints;
+                const velocity = 40 + position * 30;
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity;
+
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                particle.style.boxShadow = `0 0 12px ${color}`;
+
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+        function createWaterfallFirework(x, y, color) {
+            const particleCount = 40;
+
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = x + 'px';
+                    particle.style.top = y + 'px';
+                    particle.style.background = color;
+                    particle.style.width = '4px';
+                    particle.style.height = '4px';
+
+                    const angle = (Math.random() - 0.5) * Math.PI / 2;
+                    const velocity = 50 + Math.random() * 60;
+                    const gravity = -Math.random() * 30;
+                    const tx = Math.cos(angle) * velocity;
+                    const ty = Math.sin(angle) * velocity + gravity;
+
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
+                    particle.style.boxShadow = `0 0 8px ${color}`;
+
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 1500);
+                }, i * 20);
+            }
+        }
+
+        function createParticles() {
+            const { gridSize } = getGameSettings();
+            const foodPos = {
+                x: food.x * gridSize + gridSize / 2,
+                y: food.y * gridSize + gridSize / 2
+            };
+
+            // Select a random firework type based on fruit points
+            const fireworkTypes = ['explosion', 'ring', 'spiral', 'star', 'waterfall'];
+            const chosenType = fireworkTypes[Math.floor(Math.random() * fireworkTypes.length)];
+
+            // Different particle counts based on fruit value
+            let particleMultiplier = 1;
+            if (food.points >= 8) particleMultiplier = 2;
+            else if (food.points >= 5) particleMultiplier = 1.5;
+
+            // Create canvas glow effect first
             ctx.save();
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = food.color || '#ffff00';
-            ctx.fillRect(food.x * gridSize - gridSize, food.y * gridSize - gridSize, gridSize * 3, gridSize * 3);
+            ctx.globalAlpha = 0.2;
+
+            // Create radial gradient for fruit glow
+            const gradient = ctx.createRadialGradient(
+                food.x * gridSize + gridSize/2,
+                food.y * gridSize + gridSize/2,
+                0,
+                food.x * gridSize + gridSize/2,
+                food.y * gridSize + gridSize/2,
+                gridSize * 3
+            );
+            gradient.addColorStop(0, food.color || '#FFB7B2');
+            gradient.addColorStop(1, 'transparent');
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(food.x * gridSize - gridSize * 2, food.y * gridSize - gridSize * 2, gridSize * 5, gridSize * 5);
             ctx.restore();
+
+            // Execute chosen firework type
+            switch(chosenType) {
+                case 'explosion':
+                    createExplosionFirework(foodPos.x, foodPos.y, food.color || '#FFB7B2', Math.floor(30 * particleMultiplier));
+                    break;
+                case 'ring':
+                    createRingFirework(foodPos.x, foodPos.y, food.color || '#FFDAC1', 2 + Math.floor(particleMultiplier));
+                    break;
+                case 'spiral':
+                    createSpiralFirework(foodPos.x, foodPos.y, food.color || '#E2F0CB', Math.floor(3 * particleMultiplier));
+                    break;
+                case 'star':
+                    createStarFirework(foodPos.x, foodPos.y, food.color || '#C7CEEA');
+                    break;
+                case 'waterfall':
+                    createWaterfallFirework(foodPos.x, foodPos.y, food.color || '#FF9AA2');
+                    break;
+            }
         }
 
         // Keyboard controls
