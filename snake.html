@@ -463,6 +463,12 @@
                     }
                 }
             }
+
+            // Shift fruits through the snake body (move them backward/toward tail)
+            for (let i = snake.length - 1; i > 0; i--) {
+                snake[i].fruit = snake[i - 1].fruit;
+            }
+            snake[0].fruit = null;
         }
 
         // Generate a single food item (fruit or power-up)
@@ -509,13 +515,6 @@
             }
 
             return validPosition ? newItem : generateSingleFood(); // Recursive if invalid position
-        }
-
-            // Shift fruits through the snake body (move them backward/toward tail)
-            for (let i = snake.length - 1; i > 0; i--) {
-                snake[i].fruit = snake[i - 1].fruit;
-            }
-            snake[0].fruit = null;
         }
 
         function draw() {
