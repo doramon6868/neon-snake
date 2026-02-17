@@ -327,7 +327,7 @@
         let gameSpeed = 150; // Base game speed in ms
         let isSlowed = false; // Slow motion state
         const BASE_FOOD_COUNT = 5; // Base number of foods
-        const POWERUP_CHANCE = 0.1; // 10% chance for power-up instead of fruit
+        const POWERUP_CHANCE = 0.25; // 25% chance for power-up instead of fruit (was 10%)
 
         // Initialize
         highScoreElement.textContent = highScore;
@@ -448,37 +448,59 @@
             } else {
                 // Generate a new food if we're below the target count
                 if (foods.length < BASE_FOOD_COUNT) {
-                    const { tileCount } = getGameSettings();
-                    const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
-                    let newFood = {
-                        x: Math.floor(Math.random() * tileCount),
-                        y: Math.floor(Math.random() * tileCount),
-                        ...randomFruit
-                    };
-
-                    // Ensure new food doesn't spawn on snake or other foods
-                    let validPosition = true;
-                    for (let segment of snake) {
-                        if (segment.x === newFood.x && segment.y === newFood.y) {
-                            validPosition = false;
-                            break;
-                        }
-                    }
-
-                    if (validPosition) {
-                        for (let existingFood of foods) {
-                            if (existingFood.x === newFood.x && existingFood.y === newFood.y) {
-                                validPosition = false;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (validPosition) {
+                    const newFood = generateSingleFood();
+                    if (newFood) {
                         foods.push(newFood);
                     }
                 }
             }
+        }
+
+        // Generate a single food item (fruit or power-up)
+        function generateSingleFood() {
+            const { tileCount } = getGameSettings();
+            const isPowerUp = Math.random() < POWERUP_CHANCE;
+            let newItem;
+
+            if (isPowerUp) {
+                // Generate power-up
+                const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                newItem = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount),
+                    ...randomPowerUp,
+                    isPowerUp: true
+                };
+            } else {
+                // Generate normal fruit
+                const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+                newItem = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount),
+                    ...randomFruit
+                };
+            }
+
+            // Check position
+            let validPosition = true;
+            for (let segment of snake) {
+                if (segment.x === newItem.x && segment.y === newItem.y) {
+                    validPosition = false;
+                    break;
+                }
+            }
+
+            if (validPosition) {
+                for (let existingFood of foods) {
+                    if (existingFood.x === newItem.x && existingFood.y === newItem.y) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+            }
+
+            return validPosition ? newItem : generateSingleFood(); // Recursive if invalid position
+        }
 
             // Shift fruits through the snake body (move them backward/toward tail)
             for (let i = snake.length - 1; i > 0; i--) {
