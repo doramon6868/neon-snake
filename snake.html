@@ -14,8 +14,8 @@
         }
 
         body {
-            background: #0a0a0a;
-            color: #fff;
+            background: #FFF9F5; /* 奶油白 */
+            color: #6B5B73; /* 炭灰 */
             font-family: 'Orbitron', monospace;
             overflow: auto;
             display: flex;
@@ -34,10 +34,10 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            opacity: 0.3;
+            opacity: 0.2;
             background-image:
-                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+                linear-gradient(rgba(226, 240, 203, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(226, 240, 203, 0.3) 1px, transparent 1px);
             background-size: 50px 50px;
             animation: grid-move 20s linear infinite;
         }
@@ -66,11 +66,8 @@
             margin-bottom: 1rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            background: linear-gradient(45deg, #00ffff, #ff00ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            color: #6B5B73; /* 炭灰 */
+            text-shadow: 0 0 20px rgba(107, 91, 115, 0.3);
             animation: title-glow 2s ease-in-out infinite alternate;
         }
 
@@ -88,15 +85,15 @@
 
         .stat-box {
             padding: 1rem 2rem;
-            border: 2px solid rgba(0, 255, 255, 0.5);
+            border: 2px solid rgba(199, 206, 234, 0.7);
             border-radius: 8px;
-            background: rgba(0, 255, 255, 0.05);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(199, 206, 234, 0.3);
             transition: all 0.3s ease;
         }
 
         .stat-box:hover {
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+            box-shadow: 0 0 30px rgba(199, 206, 234, 0.5);
             transform: translateY(-2px);
         }
 
@@ -111,15 +108,15 @@
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            color: #00ffff;
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            color: #FF9AA2; /* 草莓粉 */
+            text-shadow: 0 0 10px rgba(255, 154, 162, 0.3);
         }
 
         #gameCanvas {
-            border: 3px solid #00ffff;
+            border: 3px solid #C7CEEA; /* 淡薰衣草色 */
             border-radius: 12px;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.6);
-            background: #000;
+            box-shadow: 0 0 40px rgba(199, 206, 234, 0.3);
+            background: #FFF9F5; /* 奶油白 */
             display: block;
             margin: 0 auto;
             max-width: 100%;
@@ -144,21 +141,20 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: #FFFAD1; /* 柔和的浅黄色背景 */
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 100;
-            backdrop-filter: blur(10px);
         }
 
         .overlay-content {
             text-align: center;
             padding: 3rem;
-            border: 2px solid #ff00ff;
+            border: 2px solid #F8B195;
             border-radius: 16px;
-            background: rgba(255, 0, 255, 0.1);
-            box-shadow: 0 0 60px rgba(255, 0, 255, 0.8);
+            background: rgba(248, 177, 149, 0.9); /* 桃色背景 */
+            box-shadow: 0 0 60px rgba(248, 177, 149, 0.4);
             animation: glitch 0.3s;
         }
 
@@ -173,10 +169,10 @@
         .restart-btn {
             margin-top: 2rem;
             padding: 1rem 2rem;
-            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            background: linear-gradient(45deg, #FFB7B2, #FFDAC1);
             border: none;
             border-radius: 8px;
-            color: #fff;
+            color: #6B5B73;
             font-family: 'Orbitron', monospace;
             font-size: 1.2rem;
             font-weight: 700;
@@ -188,7 +184,7 @@
 
         .restart-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 255, 255, 0.6);
+            box-shadow: 0 5px 20px rgba(255, 183, 178, 0.4);
         }
 
         .restart-btn:active {
@@ -254,8 +250,8 @@
 
     <div class="game-overlay" id="gameOverlay">
         <div class="overlay-content">
-            <h2 style="font-size: 3rem; margin-bottom: 1rem; color: #ff00ff; text-shadow: 0 0 20px rgba(255, 0, 255, 0.8);">GAME OVER</h2>
-            <p style="font-size: 1.5rem; margin-bottom: 2rem;">Final Score: <span id="finalScore">0</span></p>
+            <h2 style="font-size: 3rem; margin-bottom: 1rem; color: #6B5B73; text-shadow: 0 0 20px rgba(107, 91, 115, 0.2);">GAME OVER</h2>
+            <p style="font-size: 1.5rem; color: #6B5B73; margin-bottom: 2rem;">Final Score: <span id="finalScore">0</span></p>
             <button class="restart-btn" onclick="restartGame()">Play Again</button>
         </div>
     </div>
@@ -392,18 +388,17 @@
         function draw() {
             const { gridSize, tileCount } = getGameSettings();
 
-            // MAXIMUM VISIBILITY: Pure white background
-            ctx.fillStyle = '#ffffff';
+            // 奶油白背景
+            ctx.fillStyle = '#FFF9F5';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw complete grid without gaps - each cell is a solid block
-            ctx.strokeStyle = '#d0d0d0';
+            // 绘制subtle网格 - 淡薰衣草色
+            ctx.strokeStyle = '#C7CEEA'; /* 淡薰衣草色 */
             ctx.lineWidth = 1;
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#FFF9F5';
 
             for (let y = 0; y < tileCount; y++) {
                 for (let x = 0; x < tileCount; x++) {
-                    // Draw each cell with border
                     const xPos = x * gridSize;
                     const yPos = y * gridSize;
 
@@ -417,20 +412,39 @@
 
             console.log('Drawing snake, segments:', snake.length);
 
-            // Draw snake with MAXIMUM CONTRAST - BLACK on WHITE
+            // 马卡龙色系数组 - 蛇身分段不同颜色
+            const macaronColors = [
+                '#FFB7B2', /* 蜜桃粉 */
+                '#FFDAC1', /* 奶油杏 */
+                '#E2F0CB', /* 薄荷绿 */
+                '#C7CEEA', /* 薰衣草紫 */
+                '#F8B195', /* 珊瑚橘 */
+                '#B5EAD7', /* 冰蓝绿 */
+                '#FF9AA2', /* 草莓粉 */
+                '#C7A2C7'  /* 紫罗兰 */
+            ];
+
+            // Draw snake with macaron colors
             snake.forEach((segment, index) => {
                 console.log(`Drawing segment ${index} at`, segment);
 
-                // BLACK snake segments for maximum visibility
-                ctx.fillStyle = '#000000';
+                // 蛇头 - 草莓粉
+                if (index === 0) {
+                    ctx.fillStyle = '#FF9AA2';
+                } else {
+                    // 蛇身 - 马卡龙色系，每段不同颜色
+                    ctx.fillStyle = macaronColors[index % macaronColors.length];
+                }
+
+                // 绘制蛇身方块
                 ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                // White border around segments
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                // Subtle border
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
                 ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                // Add fruit if present - COLORED EMOJI on WHITE BACKGROUND
+                // Add fruit if present - emoji on background
                 if (segment.fruit && segment.fruit.emoji) {
                     // Draw white background for fruit
                     ctx.fillStyle = '#ffffff';
@@ -445,23 +459,23 @@
                 }
             });
 
-            // Draw food with fruit emoji - NO BORDER
+            // Draw food with fruit emoji - on cream background
             if (food.emoji) {
-                // Draw white background for fruit emoji
-                ctx.fillStyle = '#ffffff';
+                // Draw cream background for fruit emoji
+                ctx.fillStyle = '#FFF9F5';
                 ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                // Draw fruit emoji - LARGEST SIZE for clarity
+                // Draw fruit emoji
                 ctx.font = `${gridSize * 0.8}px Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#000000'; // Black text
+                ctx.fillStyle = '#6B5B73'; /* 炭灰 */
                 ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
 
                 // Draw point value
                 if (food.points > 1) {
                     ctx.font = `${Math.min(gridSize * 0.3, 14)}px Orbitron, monospace`;
-                    ctx.fillStyle = '#000000';
+                    ctx.fillStyle = '#6B5B73'; /* 炭灰 */
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
                     ctx.fillText(food.points + 'pts', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize - 3);
@@ -493,10 +507,10 @@
 
             // Animate score update
             scoreElement.style.transform = 'scale(1.2)';
-            scoreElement.style.color = '#ff00ff';
+            scoreElement.style.color = '#C7CEEA'; /* 淡薰衣草色 */
             setTimeout(() => {
                 scoreElement.style.transform = 'scale(1)';
-                scoreElement.style.color = '#00ffff';
+                scoreElement.style.color = '#FF9AA2'; /* 草莓粉 */
             }, 200);
 
             // Update high score
