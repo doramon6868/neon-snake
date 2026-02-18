@@ -1168,18 +1168,22 @@
         }
 
         function createPalmTreeAnimation(coconutPositions) {
-            // 椰子树在左侧放大两倍显示
+            // 椰子树在左下侧，占游戏区1/2大小，与地面底部对齐
             const canvas = document.getElementById('gameCanvas');
             const canvasRect = canvas.getBoundingClientRect();
 
-            // Create palm tree emoji that fades in and out (2x size = 160px)
+            // 计算椰子树大小（游戏区高度的1/2 = 50%）
+            const palmTreeHeight = canvasRect.height * 0.5;
+            const palmTreeFontSize = palmTreeHeight * 0.8; // Font size proportional to height
+
+            // Create palm tree emoji that fades in and out
             const palmTree = document.createElement('div');
             palmTree.textContent = '🌴';
             palmTree.style.cssText = `
                 position: absolute;
-                left: ${canvasRect.left - 160}px; // Adjusted for larger size
-                top: ${canvasRect.top + canvasRect.height - 200}px; // Adjusted for larger size
-                font-size: 160px; // Doubled from 80px
+                left: ${canvasRect.left - palmTreeHeight * 0.6}px; // Adjusted left position based on size
+                top: ${canvasRect.bottom - palmTreeHeight}px; // Bottom aligned with canvas
+                font-size: ${palmTreeFontSize}px;
                 pointer-events: none;
                 z-index: 150;
                 animation: palm-tree-fade 3s ease-in-out;
@@ -1188,10 +1192,10 @@
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes palm-tree-fade {
-                    0% { opacity: 0; transform: scale(1) translateY(50px); }
+                    0% { opacity: 0; transform: scale(0.8) translateY(50px); }
                     30% { opacity: 1; transform: scale(1) translateY(0); }
                     70% { opacity: 1; transform: scale(1) translateY(0); }
-                    100% { opacity: 0; transform: scale(0.8) translateY(-20px); }
+                    100% { opacity: 0; transform: scale(0.9) translateY(-20px); }
                 }
             `;
             document.head.appendChild(style);
