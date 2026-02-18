@@ -216,6 +216,125 @@
             }
         }
 
+        /* Menu overlay styles */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #FFF9F5 0%, #FFDAC1 50%, #FFB7B2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .menu-content {
+            text-align: center;
+            padding: 3rem;
+            max-width: 800px;
+            width: 90%;
+        }
+
+        .menu-title {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #6B5B73;
+            text-shadow: 0 0 30px rgba(107, 91, 115, 0.3);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+            animation: title-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes title-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .menu-subtitle {
+            font-size: 1.5rem;
+            color: #6B5B73;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+
+        .menu-buttons {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            width: 280px;
+            height: 280px;
+            border: none;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        }
+
+        .mode-btn:active {
+            transform: translateY(-5px) scale(0.98);
+        }
+
+        .challenge-btn {
+            background: linear-gradient(135deg, #FFB7B2 0%, #FF9AA2 100%);
+            border: 4px solid #fff;
+        }
+
+        .regular-btn {
+            background: linear-gradient(135deg, #B5EAD7 0%, #C7CEEA 100%);
+            border: 4px solid #fff;
+        }
+
+        .mode-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .mode-name {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6B5B73;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .mode-desc {
+            font-size: 0.9rem;
+            color: #6B5B73;
+            opacity: 0.8;
+            padding: 0 1rem;
+            line-height: 1.4;
+        }
+
         @media (max-width: 768px) {
             .game-title {
                 font-size: 2.5rem;
@@ -228,6 +347,16 @@
             }
             .stat-value {
                 font-size: 1.5rem;
+            }
+            .menu-title {
+                font-size: 2.5rem;
+            }
+            .mode-btn {
+                width: 240px;
+                height: 240px;
+            }
+            .menu-buttons {
+                gap: 1rem;
             }
         }
     </style>
@@ -260,11 +389,32 @@
         </div>
     </div>
 
+    <!-- Main Menu -->
+    <div class="menu-overlay" id="menuOverlay">
+        <div class="menu-content">
+            <h2 class="menu-title">Neon Snake</h2>
+            <p class="menu-subtitle">Choose Your Mode</p>
+            <div class="menu-buttons">
+                <button class="mode-btn challenge-btn" onclick="startChallengeMode()">
+                    <span class="mode-icon">🏆</span>
+                    <span class="mode-name">Challenge Mode</span>
+                    <span class="mode-desc">Progressive levels with increasing speed</span>
+                </button>
+                <button class="mode-btn regular-btn" onclick="startRegularMode()">
+                    <span class="mode-icon">🎮</span>
+                    <span class="mode-name">Regular Mode</span>
+                    <span class="mode-desc">Classic fixed speed gameplay</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="game-overlay" id="gameOverlay">
         <div class="overlay-content">
             <h2 style="font-size: 3rem; margin-bottom: 1rem; color: #6B5B73; text-shadow: 0 0 20px rgba(107, 91, 115, 0.2);">GAME OVER</h2>
-            <p style="font-size: 1.5rem; color: #6B5B73; margin-bottom: 2rem;">Final Score: <span id="finalScore">0</span></p>
-            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+            <p style="font-size: 1.5rem; color: #6B5B73; margin-bottom: 0.5rem;">Final Score: <span id="finalScore">0</span></p>
+            <p id="finalLevelDisplay" style="font-size: 1.2rem; color: #6B5B73; margin-bottom: 2rem; display: none;">Level Reached: <span id="finalLevel">1</span></p>
+            <button class="restart-btn" onclick="goToMenu()">Go to Menu</button>
         </div>
     </div>
 
@@ -335,7 +485,7 @@
         const BASE_FOOD_COUNT = 5; // Base number of foods
         const POWERUP_CHANCE = 0.25; // 25% chance for power-up instead of fruit (was 10%)
 
-        // Level system configuration
+        // Level system configuration (for Challenge Mode)
         const LEVEL_CONFIG = {
             POINTS_PER_LEVEL: 100,      // Points needed to level up
             INITIAL_SPEED: 250,         // Starting speed in ms (slower = easier for beginners)
@@ -343,11 +493,22 @@
             MIN_SPEED: 60               // Maximum speed cap (fastest allowed)
         };
 
+        // Regular mode configuration (fixed speed)
+        const REGULAR_CONFIG = {
+            FIXED_SPEED: 150            // Classic snake speed
+        };
+
+        // Game mode
+        let gameMode = 'menu'; // 'menu', 'challenge', or 'regular'
+        let isGameRunning = false;
+
         // Initialize
         highScoreElement.textContent = highScore;
-        setCanvasSize(); // 确保初始化时设置画布尺寸
-        updateLevelDisplay(); // Show initial level
-        generateFood();
+        setCanvasSize(); // Ensure canvas size is set on init
+
+        // Show menu on load, hide game container initially
+        document.querySelector('.game-container').style.display = 'none';
+        document.getElementById('menuOverlay').style.display = 'flex';
 
         // Debug: Log initial state
         console.log('Game initialized', {
@@ -368,14 +529,20 @@
         });
         draw();
 
-        // Calculate current game speed based on level
+        // Calculate current game speed based on mode and level
         function calculateGameSpeed() {
-            // Base speed decreases as level increases (faster gameplay)
-            let baseSpeed = LEVEL_CONFIG.INITIAL_SPEED -
-                (level - 1) * LEVEL_CONFIG.SPEED_DECREMENT_PER_LEVEL;
+            let baseSpeed;
 
-            // Ensure we don't go below minimum speed
-            baseSpeed = Math.max(baseSpeed, LEVEL_CONFIG.MIN_SPEED);
+            if (gameMode === 'regular') {
+                // Regular mode: fixed speed
+                baseSpeed = REGULAR_CONFIG.FIXED_SPEED;
+            } else {
+                // Challenge mode: speed based on level
+                baseSpeed = LEVEL_CONFIG.INITIAL_SPEED -
+                    (level - 1) * LEVEL_CONFIG.SPEED_DECREMENT_PER_LEVEL;
+                // Ensure we don't go below minimum speed
+                baseSpeed = Math.max(baseSpeed, LEVEL_CONFIG.MIN_SPEED);
+            }
 
             // Apply slow motion effect if active
             if (isSlowed) {
@@ -385,8 +552,10 @@
             return baseSpeed;
         }
 
-        // Check and handle level up
+        // Check and handle level up (only in challenge mode)
         function checkLevelUp() {
+            if (gameMode !== 'challenge') return false;
+
             const newLevel = Math.floor(score / LEVEL_CONFIG.POINTS_PER_LEVEL) + 1;
             if (newLevel > level) {
                 level = newLevel;
@@ -400,16 +569,25 @@
         // Update level display on UI
         function updateLevelDisplay() {
             const levelElement = document.getElementById('level');
-            if (levelElement) {
-                levelElement.textContent = level;
+            const levelLabel = levelElement?.parentElement?.querySelector('.stat-label');
 
-                // Animate level up
-                levelElement.style.transform = 'scale(1.5)';
-                levelElement.style.color = '#E2F0CB'; // Mint green for level up
-                setTimeout(() => {
-                    levelElement.style.transform = 'scale(1)';
-                    levelElement.style.color = '#FF9AA2'; // Back to strawberry pink
-                }, 500);
+            if (levelElement) {
+                if (gameMode === 'challenge') {
+                    // Show level in challenge mode
+                    levelElement.textContent = level;
+                    levelElement.parentElement.style.display = 'block';
+
+                    // Animate level up
+                    levelElement.style.transform = 'scale(1.5)';
+                    levelElement.style.color = '#E2F0CB'; // Mint green for level up
+                    setTimeout(() => {
+                        levelElement.style.transform = 'scale(1)';
+                        levelElement.style.color = '#FF9AA2'; // Back to strawberry pink
+                    }, 500);
+                } else {
+                    // Hide level display in regular mode
+                    levelElement.parentElement.style.display = 'none';
+                }
             }
         }
 
@@ -1184,7 +1362,19 @@
 
         function gameOver() {
             gameRunning = false;
+            isGameRunning = false;
             finalScoreElement.textContent = score;
+
+            // Show level reached in challenge mode
+            const finalLevelDisplay = document.getElementById('finalLevelDisplay');
+            const finalLevelElement = document.getElementById('finalLevel');
+            if (gameMode === 'challenge') {
+                finalLevelDisplay.style.display = 'block';
+                finalLevelElement.textContent = level;
+            } else {
+                finalLevelDisplay.style.display = 'none';
+            }
+
             gameOverlay.style.display = 'flex';
         }
 
@@ -1580,10 +1770,35 @@
             updateScore();
             updateLevelDisplay();
             gameRunning = true;
+            isGameRunning = true;
             generateFood();
             gameOverlay.style.display = 'none';
             draw(); // Redraw initial state
             gameLoop(); // Start game loop again
+        }
+
+        // Menu functions
+        function startChallengeMode() {
+            gameMode = 'challenge';
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            restartGame();
+        }
+
+        function startRegularMode() {
+            gameMode = 'regular';
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            restartGame();
+        }
+
+        function goToMenu() {
+            gameMode = 'menu';
+            gameRunning = false;
+            isGameRunning = false;
+            gameOverlay.style.display = 'none';
+            document.querySelector('.game-container').style.display = 'none';
+            document.getElementById('menuOverlay').style.display = 'flex';
         }
 
         // Firework types
@@ -1869,8 +2084,8 @@
             }
         });
 
-        // Start game
-        gameLoop();
+        // Game starts from menu, not automatically
+        // gameLoop() is called when a mode is selected
     </script>
 </body>
 </html>
