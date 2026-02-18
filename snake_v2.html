@@ -244,6 +244,10 @@
                 <div class="stat-value" id="score">0</div>
             </div>
             <div class="stat-box">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            <div class="stat-box">
                 <div class="stat-label">High Score</div>
                 <div class="stat-value" id="highScore">0</div>
             </div>
@@ -323,17 +327,26 @@
         let direction = {x: 0, y: 0};
         let foods = []; // Multiple foods array
         let score = 0;
+        let level = 1; // Current level
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let gameRunning = true;
         let activePowerUps = []; // Active power-up effects
-        let gameSpeed = 150; // Base game speed in ms
         let isSlowed = false; // Slow motion state
         const BASE_FOOD_COUNT = 5; // Base number of foods
         const POWERUP_CHANCE = 0.25; // 25% chance for power-up instead of fruit (was 10%)
 
+        // Level system configuration
+        const LEVEL_CONFIG = {
+            POINTS_PER_LEVEL: 100,      // Points needed to level up
+            INITIAL_SPEED: 250,         // Starting speed in ms (slower = easier for beginners)
+            SPEED_DECREMENT_PER_LEVEL: 15, // How much faster each level gets (ms reduction)
+            MIN_SPEED: 60               // Maximum speed cap (fastest allowed)
+        };
+
         // Initialize
         highScoreElement.textContent = highScore;
         setCanvasSize(); // 确保初始化时设置画布尺寸
+        updateLevelDisplay(); // Show initial level
         generateFood();
 
         // Debug: Log initial state
@@ -355,6 +368,103 @@
         });
         draw();
 
+        // Calculate current game speed based on level
+        function calculateGameSpeed() {
+            // Base speed decreases as level increases (faster gameplay)
+            let baseSpeed = LEVEL_CONFIG.INITIAL_SPEED -
+                (level - 1) * LEVEL_CONFIG.SPEED_DECREMENT_PER_LEVEL;
+
+            // Ensure we don't go below minimum speed
+            baseSpeed = Math.max(baseSpeed, LEVEL_CONFIG.MIN_SPEED);
+
+            // Apply slow motion effect if active
+            if (isSlowed) {
+                return baseSpeed * 1.5; // 50% slower when slow power-up is active
+            }
+
+            return baseSpeed;
+        }
+
+        // Check and handle level up
+        function checkLevelUp() {
+            const newLevel = Math.floor(score / LEVEL_CONFIG.POINTS_PER_LEVEL) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                updateLevelDisplay();
+                showLevelUpEffect();
+                return true;
+            }
+            return false;
+        }
+
+        // Update level display on UI
+        function updateLevelDisplay() {
+            const levelElement = document.getElementById('level');
+            if (levelElement) {
+                levelElement.textContent = level;
+
+                // Animate level up
+                levelElement.style.transform = 'scale(1.5)';
+                levelElement.style.color = '#E2F0CB'; // Mint green for level up
+                setTimeout(() => {
+                    levelElement.style.transform = 'scale(1)';
+                    levelElement.style.color = '#FF9AA2'; // Back to strawberry pink
+                }, 500);
+            }
+        }
+
+        // Show level up visual effect
+        function showLevelUpEffect() {
+            const effectDiv = document.createElement('div');
+            effectDiv.style.cssText = `
+                position: fixed;
+                top: 30%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(45deg, #FFB7B2, #FFDAC1, #E2F0CB);
+                color: #6B5B73;
+                padding: 2rem 3rem;
+                border-radius: 20px;
+                font-size: 2rem;
+                font-weight: 900;
+                z-index: 1000;
+                pointer-events: none;
+                animation: levelup-pop 1.5s ease-out forwards;
+                box-shadow: 0 0 40px rgba(255, 183, 178, 0.6);
+                border: 3px solid #fff;
+            `;
+            effectDiv.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎉</div>
+                    <div>LEVEL UP!</div>
+                    <div style="font-size: 1.5rem; margin-top: 0.5rem;">Level ${level}</div>
+                    <div style="font-size: 1rem; opacity: 0.8; margin-top: 0.5rem;">Speed increased!</div>
+                </div>
+            `;
+
+            // Add animation style
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes levelup-pop {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); }
+                    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(2deg); }
+                    40% { transform: translate(-50%, -50%) scale(0.95) rotate(-1deg); }
+                    60% { transform: translate(-50%, -50%) scale(1.02) rotate(0deg); }
+                    80% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(effectDiv);
+
+            setTimeout(() => {
+                effectDiv.remove();
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            }, 1500);
+        }
+
         // Game loop
         function gameLoop() {
             if (!gameRunning) return;
@@ -363,7 +473,7 @@
             draw();
             processPowerUps();
 
-            const currentSpeed = isSlowed ? gameSpeed * 1.3 : gameSpeed;
+            const currentSpeed = calculateGameSpeed();
             setTimeout(gameLoop, currentSpeed);
         }
 
@@ -1067,6 +1177,9 @@
                 highScoreElement.textContent = highScore;
                 localStorage.setItem('snakeHighScore', highScore);
             }
+
+            // Check for level up
+            checkLevelUp();
         }
 
         function gameOver() {
@@ -1463,7 +1576,9 @@
             snake = [{x: 10, y: 10, fruit: null}];
             direction = {x: 0, y: 0};
             score = 0;
+            level = 1; // Reset level
             updateScore();
+            updateLevelDisplay();
             gameRunning = true;
             generateFood();
             gameOverlay.style.display = 'none';
