@@ -1203,9 +1203,20 @@
 
         function createParticles(eatenFood) {
             const { gridSize } = getGameSettings();
-            const foodPos = {
-                x: eatenFood.x * gridSize + gridSize / 2,
-                y: eatenFood.y * gridSize + gridSize / 2
+            const canvas = document.getElementById('gameCanvas');
+            const canvasRect = canvas.getBoundingClientRect();
+
+            // Calculate the screen position of the eaten food
+            const foodScreenPos = {
+                x: canvasRect.left + (eatenFood.x + 0.5) * gridSize,
+                y: canvasRect.top + (eatenFood.y + 0.5) * gridSize
+            };
+
+            // Calculate a position above the canvas for the firework to start
+            // This ensures firework is visible outside the game area
+            const fireworkPos = {
+                x: foodScreenPos.x,
+                y: canvasRect.top - 100 // Start above the canvas
             };
 
             // Select a random firework type based on fruit points
@@ -1217,7 +1228,7 @@
             if (eatenFood.points >= 8) particleMultiplier = 2;
             else if (eatenFood.points >= 5) particleMultiplier = 1.5;
 
-            // Create canvas glow effect first
+            // Create canvas glow effect first (this stays in canvas)
             ctx.save();
             ctx.globalAlpha = 0.2;
 
@@ -1237,22 +1248,22 @@
             ctx.fillRect(eatenFood.x * gridSize - gridSize * 2, eatenFood.y * gridSize - gridSize * 2, gridSize * 5, gridSize * 5);
             ctx.restore();
 
-            // Execute chosen firework type
+            // Execute chosen firework type at screen position (outside canvas)
             switch(chosenType) {
                 case 'explosion':
-                    createExplosionFirework(foodPos.x, foodPos.y, eatenFood.color || '#FFB7B2', Math.floor(30 * particleMultiplier));
+                    createExplosionFirework(fireworkPos.x, fireworkPos.y, eatenFood.color || '#FFB7B2', Math.floor(30 * particleMultiplier));
                     break;
                 case 'ring':
-                    createRingFirework(foodPos.x, foodPos.y, eatenFood.color || '#FFDAC1', 2 + Math.floor(particleMultiplier));
+                    createRingFirework(fireworkPos.x, fireworkPos.y, eatenFood.color || '#FFDAC1', 2 + Math.floor(particleMultiplier));
                     break;
                 case 'spiral':
-                    createSpiralFirework(foodPos.x, foodPos.y, eatenFood.color || '#E2F0CB', Math.floor(3 * particleMultiplier));
+                    createSpiralFirework(fireworkPos.x, fireworkPos.y, eatenFood.color || '#E2F0CB', Math.floor(3 * particleMultiplier));
                     break;
                 case 'star':
-                    createStarFirework(foodPos.x, foodPos.y, eatenFood.color || '#C7CEEA');
+                    createStarFirework(fireworkPos.x, fireworkPos.y, eatenFood.color || '#C7CEEA');
                     break;
                 case 'waterfall':
-                    createWaterfallFirework(foodPos.x, foodPos.y, eatenFood.color || '#FF9AA2');
+                    createWaterfallFirework(fireworkPos.x, fireworkPos.y, eatenFood.color || '#FF9AA2');
                     break;
             }
         }
