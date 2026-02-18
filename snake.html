@@ -312,7 +312,8 @@
             { emoji: '⏰', type: 'slow', duration: 30000, color: '#B5EAD7' },          // 减速道具
             { emoji: '🧺', type: 'extra', color: '#E2F0CB' },                         // 额外水果
             { emoji: '🚀', type: 'line', color: '#FF9AA2' },                          // 水果直线
-            { emoji: '❄️', type: 'blizzard', color: '#C7CEEA' }                      // 暴风雪
+            { emoji: '❄️', type: 'blizzard', color: '#C7CEEA' },                     // 暴风雪
+            { emoji: '🌴', type: 'coconut', color: '#8b4513' }                       // 椰子树道具
         ];
 
         let snake = [
@@ -430,6 +431,9 @@
                                 break;
                             case 'blizzard':
                                 activateBlizzard();
+                                break;
+                            case 'coconut':
+                                activateCoconutPalm();
                                 break;
                         }
                         foods.splice(i, 1);
@@ -765,6 +769,86 @@
             createSnowfallAnimation(landingPositions);
         }
 
+        function activateCoconutPalm() {
+            // 随机出现5个椰子
+            const { tileCount } = getGameSettings();
+            const coconutCount = 5;
+            const coconutData = fruitTypes.find(f => f.emoji === '🥥'); // Find coconut fruit data
+
+            // 生成5个随机位置
+            const coconutPositions = [];
+            for (let i = 0; i < coconutCount; i++) {
+                let pos = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+
+                // 检查位置是否有效
+                let valid = true;
+                for (let segment of snake) {
+                    if (segment.x === pos.x && segment.y === pos.y) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                for (let existingFood of foods) {
+                    if (existingFood.x === pos.x && existingFood.y === pos.y) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                for (let existingPos of coconutPositions) {
+                    if (existingPos.x === pos.x && existingPos.y === pos.y) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (valid) {
+                    coconutPositions.push(pos);
+                } else {
+                    i--; // Try again
+                }
+            }
+
+            // 延迟添加椰子，配合动画效果
+            coconutPositions.forEach((pos, index) => {
+                setTimeout(() => {
+                    // 检查位置是否仍然有效（可能在延迟期间被占用）
+                    let stillValid = true;
+                    for (let segment of snake) {
+                        if (segment.x === pos.x && segment.y === pos.y) {
+                            stillValid = false;
+                            break;
+                        }
+                    }
+
+                    for (let existingFood of foods) {
+                        if (existingFood.x === pos.x && existingFood.y === pos.y) {
+                            stillValid = false;
+                            break;
+                        }
+                    }
+
+                    if (stillValid && foods.length < 20) {
+                        foods.push({
+                            x: pos.x,
+                            y: pos.y,
+                            ...coconutData
+                        });
+                    }
+                }, index * 200); // Stagger the appearance
+            });
+
+            showPowerUpEffect(`Coconut Palm: +${coconutCount} coconuts!`);
+
+            // 创建阳光和椰子树动画
+            createSunshineAnimation();
+            createPalmTreeAnimation(coconutPositions);
+        }
+
         function showPowerUpEffect(text) {
             // 创建临时UI提示
             const effectDiv = document.createElement('div');
@@ -1045,6 +1129,120 @@
                     }, 1000);
                 }, index * 100);
             });
+        }
+
+        function createSunshineAnimation() {
+            // 阳光从右侧闪过的动画
+            const canvas = document.getElementById('gameCanvas');
+            const canvasRect = canvas.getBoundingClientRect();
+
+            // 创建阳光射线
+            const sunshine = document.createElement('div');
+            sunshine.style.cssText = `
+                position: fixed;
+                top: ${canvasRect.top}px;
+                left: ${canvasRect.left + canvasRect.width}px;
+                width: 200px;
+                height: ${canvasRect.height}px;
+                background: linear-gradient(to left, rgba(255, 255, 0, 0.3), transparent);
+                pointer-events: none;
+                z-index: 150;
+                animation: sunshine-move 2s ease-out forwards;
+            `;
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes sunshine-move {
+                    0% { transform: translateX(0); opacity: 0; }
+                    20% { opacity: 1; }
+                    80% { opacity: 1; }
+                    100% { transform: translateX(-${canvasRect.width + 300}px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(sunshine);
+
+            setTimeout(() => {
+                sunshine.remove();
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            }, 2000);
+        }
+
+        function createPalmTreeAnimation(coconutPositions) {
+            // 椰子树在左侧渐隐渐现
+            const canvas = document.getElementById('gameCanvas');
+            const canvasRect = canvas.getBoundingClientRect();
+
+            // Create palm tree emoji that fades in and out
+            const palmTree = document.createElement('div');
+            palmTree.textContent = '🌴';
+            palmTree.style.cssText = `
+                position: absolute;
+                left: ${canvasRect.left - 80}px;
+                top: ${canvasRect.top + canvasRect.height - 100}px;
+                font-size: 80px;
+                pointer-events: none;
+                z-index: 150;
+                animation: palm-tree-fade 3s ease-in-out;
+            `;
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes palm-tree-fade {
+                    0% { opacity: 0; transform: scale(0.5) translateY(50px); }
+                    30% { opacity: 1; transform: scale(1) translateY(0); }
+                    70% { opacity: 1; transform: scale(1) translateY(0); }
+                    100% { opacity: 0; transform: scale(0.8) translateY(-20px); }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(palmTree);
+
+            // Show visual effect at each coconut position
+            coconutPositions.forEach((pos, index) => {
+                setTimeout(() => {
+                    const effect = document.createElement('div');
+                    effect.style.cssText = `
+                        position: absolute;
+                        left: ${canvasRect.left + pos.x * (canvasRect.width / 20) + (canvasRect.width / 40) - 15}px;
+                        top: ${canvasRect.top + pos.y * (canvasRect.height / 20) + (canvasRect.height / 40) - 15}px;
+                        width: 30px;
+                        height: 30px;
+                        background: radial-gradient(circle, rgba(255, 255, 0, 0.8), transparent);
+                        border-radius: 50%;
+                        pointer-events: none;
+                        z-index: 100;
+                        animation: coconut-spawn 0.5s ease-out;
+                    `;
+
+                    const effectStyle = document.createElement('style');
+                    effectStyle.textContent = `
+                        @keyframes coconut-spawn {
+                            0% { transform: scale(0); opacity: 1; }
+                            50% { transform: scale(2); opacity: 0.5; }
+                            100% { transform: scale(0); opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(effectStyle);
+                    document.body.appendChild(effect);
+
+                    setTimeout(() => {
+                        effect.remove();
+                        if (document.head.contains(effectStyle)) {
+                            document.head.removeChild(effectStyle);
+                        }
+                    }, 500);
+                }, index * 200);
+            });
+
+            setTimeout(() => {
+                palmTree.remove();
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            }, 3000);
         }
 
         function restartGame() {
