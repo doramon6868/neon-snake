@@ -1132,57 +1132,54 @@
         }
 
         function createSunshineAnimation() {
-            // 阳光从右侧闪过的动画
+            // 在右侧上方创建固定太阳
             const canvas = document.getElementById('gameCanvas');
             const canvasRect = canvas.getBoundingClientRect();
 
-            // 创建阳光射线
-            const sunshine = document.createElement('div');
-            sunshine.style.cssText = `
-                position: fixed;
-                top: ${canvasRect.top}px;
-                left: ${canvasRect.left + canvasRect.width}px;
-                width: 200px;
-                height: ${canvasRect.height}px;
-                background: linear-gradient(to left, rgba(255, 255, 0, 0.3), transparent);
+            // 创建太阳
+            const sun = document.createElement('div');
+            sun.textContent = '☀️';
+            sun.style.cssText = `
+                position: absolute;
+                right: 20px;
+                top: 20px;
+                font-size: 60px;
                 pointer-events: none;
                 z-index: 150;
-                animation: sunshine-move 2s ease-out forwards;
+                animation: sun-glow 3s ease-in-out infinite;
             `;
 
             const style = document.createElement('style');
             style.textContent = `
-                @keyframes sunshine-move {
-                    0% { transform: translateX(0); opacity: 0; }
-                    20% { opacity: 1; }
-                    80% { opacity: 1; }
-                    100% { transform: translateX(-${canvasRect.width + 300}px); opacity: 0; }
+                @keyframes sun-glow {
+                    0%, 100% { transform: scale(1); filter: brightness(1); }
+                    50% { transform: scale(1.1); filter: brightness(1.2); }
                 }
             `;
             document.head.appendChild(style);
-            document.body.appendChild(sunshine);
+            document.body.appendChild(sun);
 
             setTimeout(() => {
-                sunshine.remove();
+                sun.remove();
                 if (document.head.contains(style)) {
                     document.head.removeChild(style);
                 }
-            }, 2000);
+            }, 3000);
         }
 
         function createPalmTreeAnimation(coconutPositions) {
-            // 椰子树在左侧渐隐渐现
+            // 椰子树在左侧放大两倍显示
             const canvas = document.getElementById('gameCanvas');
             const canvasRect = canvas.getBoundingClientRect();
 
-            // Create palm tree emoji that fades in and out
+            // Create palm tree emoji that fades in and out (2x size = 160px)
             const palmTree = document.createElement('div');
             palmTree.textContent = '🌴';
             palmTree.style.cssText = `
                 position: absolute;
-                left: ${canvasRect.left - 80}px;
-                top: ${canvasRect.top + canvasRect.height - 100}px;
-                font-size: 80px;
+                left: ${canvasRect.left - 160}px; // Adjusted for larger size
+                top: ${canvasRect.top + canvasRect.height - 200}px; // Adjusted for larger size
+                font-size: 160px; // Doubled from 80px
                 pointer-events: none;
                 z-index: 150;
                 animation: palm-tree-fade 3s ease-in-out;
@@ -1191,7 +1188,7 @@
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes palm-tree-fade {
-                    0% { opacity: 0; transform: scale(0.5) translateY(50px); }
+                    0% { opacity: 0; transform: scale(1) translateY(50px); }
                     30% { opacity: 1; transform: scale(1) translateY(0); }
                     70% { opacity: 1; transform: scale(1) translateY(0); }
                     100% { opacity: 0; transform: scale(0.8) translateY(-20px); }
