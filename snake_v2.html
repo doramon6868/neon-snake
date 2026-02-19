@@ -2904,6 +2904,7 @@
 
         // 辅助函数：使用 BFS 寻找通往食物的路径
         function findPathToFood(startX, startY, targetX, targetY, excludeTail = false) {
+            const { tileCount } = getGameSettings();
             const queue = [{x: startX, y: startY, path: []}];
             const visited = new Set();
             visited.add(`${startX},${startY}`);
