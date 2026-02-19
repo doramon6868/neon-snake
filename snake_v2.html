@@ -573,6 +573,17 @@
     </div>
 
     <script>
+
+        // ============================================================
+        // REGION: 全局变量与配置 (Global Variables & Configuration)
+        // ============================================================
+        // - DOM 元素引用
+        // - 游戏模式变量
+        // - 蛇和食物状态
+        // - 等级和分数
+        // - 配置常量
+        // ============================================================
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
@@ -716,6 +727,19 @@
             offsetHeight: canvas.offsetHeight
         });
         draw();
+
+        // END REGION: 全局变量与配置
+
+
+        // ============================================================
+        // REGION: 游戏逻辑函数 (Game Logic Functions)
+        // ============================================================
+        // - 速度计算
+        // - 等级系统
+        // - 游戏主循环
+        // - 更新逻辑
+        // - 食物生成
+        // ============================================================
 
         // Calculate current game speed based on mode and level
         function calculateGameSpeed() {
@@ -976,6 +1000,18 @@
             snake[0].fruit = null;
         }
 
+        // END REGION: 游戏逻辑函数
+
+
+        // ============================================================
+        // REGION: 渲染函数 (Render Functions)
+        // ============================================================
+        // - 主绘制函数
+        // - 网格绘制
+        // - 蛇渲染
+        // - 食物渲染
+        // ============================================================
+
         // Generate a single food item (fruit or power-up)
         function generateSingleFood() {
             const { tileCount } = getGameSettings();
@@ -1188,6 +1224,20 @@
                 }
             });
         }
+
+        // END REGION: 渲染函数
+
+
+        // ============================================================
+        // REGION: 道具系统 (Power-Up System)
+        // ============================================================
+        // - 减速道具
+        // - 额外水果
+        // - 直线水果
+        // - 暴风雪
+        // - 椰子树
+        // - 樱桃树
+        // ============================================================
 
         // Power-up effect functions
         function activateSlow() {
@@ -1496,6 +1546,17 @@
             createCherryTreeAnimation();
         }
 
+        // END REGION: 道具系统
+
+
+        // ============================================================
+        // REGION: 分数与游戏结束 (Score & Game Over)
+        // ============================================================
+        // - 分数更新
+        // - 最高分记录
+        // - 游戏结束处理
+        // ============================================================
+
         function showPowerUpEffect(text) {
             // 创建临时UI提示
             const effectDiv = document.createElement('div');
@@ -1715,6 +1776,22 @@
                 setTimeout(() => createTrophyAnimation(score), 300);
             }
         }
+
+        // END REGION: 分数与游戏结束
+
+
+        // ============================================================
+        // REGION: 动画效果 (Animation Effects)
+        // ============================================================
+        // - 时钟动画
+        // - 水果雨
+        // - 菜单水果动画
+        // - 火箭动画
+        // - 雪花飘落
+        // - 阳光和椰子树
+        // - 樱桃树
+        // - 粒子效果
+        // ============================================================
 
         // Power-up animation functions
         function createClockAnimation(x, y) {
@@ -2179,8 +2256,8 @@
             gameLoop(); // Start game loop again
         }
 
-        // Menu functions
-        function startChallengeMode() {
+        // Power-up animation functions
+        function createClockAnimation(x, y) {
             // 停止菜单水果动画
             stopMenuFruitAnimation();
 
@@ -3093,6 +3170,17 @@
             }
         }
 
+        // END REGION: 动画效果
+
+
+        // ============================================================
+        // REGION: UI 控制 (UI Control)
+        // ============================================================
+        // - 菜单控制
+        // - 游戏模式切换
+        // - 返回菜单
+        // ============================================================
+
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             // Disable keyboard controls in AI mode
@@ -3177,8 +3265,22 @@
             }
         });
 
+        // END REGION: UI 控制
+
+
+        // ============================================================
+        // REGION: 初始化 (Initialization)
+        // ============================================================
+        // - 游戏从菜单开始
+        // - 不自动启动游戏循环
+        // - gameLoop() 在选择模式时调用
+        // ============================================================
+
         // Game starts from menu, not automatically
         // gameLoop() is called when a mode is selected
+
+        // END REGION: 初始化
+
     </script>
 </body>
 </html>
