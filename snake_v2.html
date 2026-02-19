@@ -2753,19 +2753,13 @@
 
             if (!nearestFood) return;
 
-            // AI imperfection factors
-            const MISTAKE_CHANCE = 0.2; // 20% chance to make a suboptimal move
-            const IGNORE_SPACE_CHANCE = 0.3; // 30% chance to ignore space evaluation
-            const MAKE_MISTAKE = Math.random() < MISTAKE_CHANCE;
-            const IGNORE_SPACE = Math.random() < IGNORE_SPACE_CHANCE;
-
             // Get possible directions (excluding reverse)
             const currentDir = direction;
             const possibleDirs = [
-                {x: 0, y: -1, name: 'up'},    // up
-                {x: 0, y: 1, name: 'down'},   // down
-                {x: -1, y: 0, name: 'left'},  // left
-                {x: 1, y: 0, name: 'right'}   // right
+                {x: 0, y: -1},    // up
+                {x: 0, y: 1},     // down
+                {x: -1, y: 0},    // left
+                {x: 1, y: 0}      // right
             ].filter(dir => {
                 // Can't go reverse
                 if (currentDir.x !== 0 || currentDir.y !== 0) {
@@ -2776,81 +2770,100 @@
                 return true;
             });
 
-            // Collect all valid moves
-            let validMoves = [];
-
+            // Filter safe moves (considering tail will move)
+            let safeMoves = [];
             for (let dir of possibleDirs) {
                 const newX = head.x + dir.x;
                 const newY = head.y + dir.y;
 
-                // Check if move is valid (not hitting wall)
-                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
-                    continue;
+                if (isSafeMove(newX, newY, true)) {
+                    safeMoves.push({x: dir.x, y: dir.y, newX, newY});
                 }
+            }
 
-                // Check if hitting self
-                let hitsSelf = false;
-                for (let i = 0; i < snake.length; i++) {
-                    if (snake[i].x === newX && snake[i].y === newY) {
-                        hitsSelf = true;
-                        break;
+            if (safeMoves.length === 0) {
+                // No safe moves, try any move that won't immediately kill (including tail)
+                for (let dir of possibleDirs) {
+                    const newX = head.x + dir.x;
+                    const newY = head.y + dir.y;
+
+                    if (isSafeMove(newX, newY, false)) {
+                        direction = {x: dir.x, y: dir.y};
+                        return;
                     }
                 }
-                if (hitsSelf) continue;
+                return; // No moves available
+            }
 
-                // Calculate score for this direction
+            // Try to find a safe path to food using BFS
+            const pathToFood = findPathToFood(head.x, head.y, nearestFood.x, nearestFood.y, true);
+
+            if (pathToFood && pathToFood.length > 0) {
+                const nextMove = pathToFood[0];
+                const dirX = nextMove.x - head.x;
+                const dirY = nextMove.y - head.y;
+
+                // Check if this move is safe (not in safeMoves list means it hits something)
+                const isMoveSafe = safeMoves.some(m => m.x === dirX && m.y === dirY);
+
+                if (isMoveSafe) {
+                    // Check if the path is safe (enough space after eating)
+                    const minRequiredSpace = (snake.length + 1) * 1.5;
+
+                    // Calculate space after this move
+                    const spaceAfterMove = countAccessibleSpace(nextMove.x, nextMove.y, tileCount, false);
+
+                    if (spaceAfterMove >= minRequiredSpace || pathToFood.length === 1) {
+                        // Safe to move toward food
+                        direction = {x: dirX, y: dirY};
+                        return;
+                    }
+                }
+            }
+
+            // No safe path to food, use follow-tail strategy or safest move
+            let bestMove = null;
+            let bestScore = -Infinity;
+
+            for (let move of safeMoves) {
                 let score = 0;
 
-                // Distance to food (prefer closer)
-                const distToFood = Math.abs(newX - nearestFood.x) + Math.abs(newY - nearestFood.y);
-                score -= distToFood * 10;
+                // Calculate accessible space from this position
+                const space = countAccessibleSpace(move.newX, move.newY, tileCount, false);
+                score += space * 3; // Prioritize open space
 
-                // Bonus for moving toward food
-                if (distToFood < minDistance) {
-                    score += 50;
+                // Try to follow tail if possible (maintain longest path)
+                const tail = snake[snake.length - 1];
+                const distToTail = Math.abs(move.newX - tail.x) + Math.abs(move.newY - tail.y);
+                score += distToTail; // Prefer positions closer to tail (longer path)
+
+                // Avoid getting too close to walls
+                const wallDist = Math.min(move.newX, move.newY, tileCount - 1 - move.newX, tileCount - 1 - move.newY);
+                score += wallDist * 2;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
                 }
-
-                // Check if this move leads to food
-                if (newX === nearestFood.x && newY === nearestFood.y) {
-                    score += 200; // Big bonus for eating
-                }
-
-                // Prefer moves that don't trap us (unless AI is ignoring space)
-                if (!IGNORE_SPACE) {
-                    const spaceScore = countAccessibleSpace(newX, newY, tileCount);
-                    score += spaceScore * 2;
-                }
-
-                validMoves.push({dir, score});
             }
 
-            if (validMoves.length === 0) return;
-
-            // Sort by score (best first)
-            validMoves.sort((a, b) => b.score - a.score);
-
-            let chosenMove;
-
-            if (MAKE_MISTAKE && validMoves.length > 1) {
-                // Make a mistake: pick a random move instead of the best one
-                // Prefer worse moves but occasionally pick something decent
-                const mistakeIndex = Math.floor(Math.random() * validMoves.length);
-                chosenMove = validMoves[mistakeIndex];
-            } else {
-                // Pick the best move
-                chosenMove = validMoves[0];
+            if (bestMove) {
+                direction = {x: bestMove.x, y: bestMove.y};
+            } else if (safeMoves.length > 0) {
+                // Fallback: choose the move with most space
+                direction = {x: safeMoves[0].x, y: safeMoves[0].y};
             }
-
-            direction = {x: chosenMove.dir.x, y: chosenMove.dir.y};
         }
 
         // Count accessible space from a position (flood fill)
-        function countAccessibleSpace(startX, startY, tileCount) {
+        function countAccessibleSpace(startX, startY, tileCount, excludeTail = false) {
             const visited = new Set();
             const queue = [{x: startX, y: startY}];
             visited.add(`${startX},${startY}`);
             let count = 0;
-            const maxCount = 50; // Limit for performance
+            const maxCount = 200; // 增加搜索范围以支持更长的蛇
+
+            const tailIndex = excludeTail ? snake.length - 1 : -1;
 
             while (queue.length > 0 && count < maxCount) {
                 const {x, y} = queue.shift();
@@ -2869,10 +2882,11 @@
                     const key = `${n.x},${n.y}`;
                     if (visited.has(key)) continue;
 
-                    // Check if occupied by snake
+                    // Check if occupied by snake (exclude tail if needed)
                     let occupied = false;
-                    for (let segment of snake) {
-                        if (segment.x === n.x && segment.y === n.y) {
+                    for (let i = 0; i < snake.length; i++) {
+                        if (i === tailIndex) continue; // 跳过尾巴（因为下一步尾巴会移开）
+                        if (snake[i].x === n.x && snake[i].y === n.y) {
                             occupied = true;
                             break;
                         }
@@ -2886,6 +2900,99 @@
             }
 
             return count;
+        }
+
+        // 辅助函数：使用 BFS 寻找通往食物的路径
+        function findPathToFood(startX, startY, targetX, targetY, excludeTail = false) {
+            const queue = [{x: startX, y: startY, path: []}];
+            const visited = new Set();
+            visited.add(`${startX},${startY}`);
+
+            const tailIndex = excludeTail ? snake.length - 1 : -1;
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.x === targetX && current.y === targetY) {
+                    return current.path;
+                }
+
+                const directions = [
+                    {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}
+                ];
+
+                for (let dir of directions) {
+                    const newX = current.x + dir.x;
+                    const newY = current.y + dir.y;
+                    const key = `${newX},${newY}`;
+
+                    if (visited.has(key)) continue;
+                    if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+
+                    // Check collision with snake body
+                    let isBody = false;
+                    for (let i = 0; i < snake.length; i++) {
+                        if (i === tailIndex) continue;
+                        if (snake[i].x === newX && snake[i].y === newY) {
+                            isBody = true;
+                            break;
+                        }
+                    }
+
+                    if (isBody) continue;
+
+                    visited.add(key);
+                    queue.push({
+                        x: newX,
+                        y: newY,
+                        path: [...current.path, {x: newX, y: newY}]
+                    });
+                }
+            }
+
+            return null; // No path found
+        }
+
+        // 辅助函数：检查路径是否安全（吃完食物后有逃生路线）
+        function isPathSafe(path, foodX, foodY) {
+            if (!path || path.length === 0) return false;
+
+            // 模拟蛇吃完食物后的状态
+            const newHead = path[path.length - 1];
+            const newSnakeLength = snake.length + 1;
+
+            // 检查吃完食物后的可达空间
+            // 蛇会增长，所以需要更多空间
+            const minSpace = newSnakeLength * 1.2;
+            const accessibleSpace = countAccessibleSpace(newHead.x, newHead.y, tileCount, false);
+
+            return accessibleSpace >= minSpace;
+        }
+
+        // 辅助函数：计算到尾巴的路径（用于跟随尾巴策略）
+        function findPathToTail(startX, startY) {
+            const tail = snake[snake.length - 1];
+            return findPathToFood(startX, startY, tail.x, tail.y, true);
+        }
+
+        // 辅助函数：检查移动是否安全（不会立即死亡）
+        function isSafeMove(newX, newY, excludeTail = true) {
+            // Check bounds
+            if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
+                return false;
+            }
+
+            const tailIndex = excludeTail ? snake.length - 1 : -1;
+
+            // Check collision with snake body
+            for (let i = 0; i < snake.length; i++) {
+                if (i === tailIndex) continue;
+                if (snake[i].x === newX && snake[i].y === newY) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // Firework types
