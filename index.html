@@ -688,6 +688,11 @@
             FIXED_SPEED: 150            // Classic snake speed
         };
 
+        // AI mode configuration
+        const AI_CONFIG = {
+            FIXED_SPEED: 120            // AI mode fixed speed (faster than manual mode)
+        };
+
         // AI snake settings - all blue color scheme
         const AI_COLORS = {
             head: '#0066CC',      // Deep blue head
@@ -748,6 +753,9 @@
             if (gameMode === 'regular') {
                 // Regular mode: fixed speed
                 baseSpeed = REGULAR_CONFIG.FIXED_SPEED;
+            } else if (gameMode === 'ai') {
+                // AI mode: fixed faster speed for smoother viewing
+                baseSpeed = AI_CONFIG.FIXED_SPEED;
             } else {
                 // Challenge mode: speed based on level
                 baseSpeed = LEVEL_CONFIG.INITIAL_SPEED -
@@ -2807,13 +2815,9 @@
                 const isMoveSafe = safeMoves.some(m => m.x === dirX && m.y === dirY);
 
                 if (isMoveSafe) {
-                    // Check if the path is safe (enough space after eating)
-                    const minRequiredSpace = (snake.length + 1) * 1.5;
-
-                    // Calculate space after this move
-                    const spaceAfterMove = countAccessibleSpace(nextMove.x, nextMove.y, tileCount, false);
-
-                    if (spaceAfterMove >= minRequiredSpace || pathToFood.length === 1) {
+                    // Check if the path is safe using more conservative criteria
+                    // Must be able to reach tail after eating, or have enough space
+                    if (canSafelyReachFood(pathToFood) || pathToFood.length === 1) {
                         // Safe to move toward food
                         direction = {x: dirX, y: dirY};
                         return;
@@ -2861,7 +2865,7 @@
             const queue = [{x: startX, y: startY}];
             visited.add(`${startX},${startY}`);
             let count = 0;
-            const maxCount = 200; // 增加搜索范围以支持更长的蛇
+            const maxCount = 400; // 增加搜索范围以支持更长的蛇，更保守的空间检查
 
             const tailIndex = excludeTail ? snake.length - 1 : -1;
 
@@ -2968,6 +2972,74 @@
             const accessibleSpace = countAccessibleSpace(newHead.x, newHead.y, tileCount, false);
 
             return accessibleSpace >= minSpace;
+        }
+
+        // 辅助函数：检查吃完食物后是否能安全到达尾巴
+        function canSafelyReachFood(pathToFood) {
+            if (!pathToFood || pathToFood.length === 0) return false;
+
+            const foodPos = pathToFood[pathToFood.length - 1];
+
+            // 模拟吃完食物后的蛇状态（蛇身增长）
+            const simulatedSnake = [
+                {x: foodPos.x, y: foodPos.y},  // 新头部在食物位置
+                ...snake.map(s => ({...s}))    // 复制当前蛇身
+            ];
+
+            // 找从食物位置到尾巴的路径
+            const pathToTail = findPathFromSnake(simulatedSnake, simulatedSnake.length - 1);
+
+            return pathToTail !== null;  // 只有能找到到尾巴的路径才安全
+        }
+
+        // 辅助函数：从指定蛇状态寻找路径到指定目标索引（用于模拟）
+        function findPathFromSnake(simulatedSnake, targetIndex) {
+            const { tileCount } = getGameSettings();
+            const head = simulatedSnake[0];
+            const target = simulatedSnake[targetIndex];
+
+            const queue = [{x: head.x, y: head.y, path: []}];
+            const visited = new Set();
+            visited.add(`${head.x},${head.y}`);
+
+            // 构建障碍物集合（排除目标位置，因为那是我们要到达的）
+            const obstacleSet = new Set();
+            for (let i = 0; i < simulatedSnake.length; i++) {
+                if (i !== targetIndex) {  // 目标位置（通常是尾巴）不作为障碍物
+                    obstacleSet.add(`${simulatedSnake[i].x},${simulatedSnake[i].y}`);
+                }
+            }
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.x === target.x && current.y === target.y) {
+                    return current.path;
+                }
+
+                const directions = [
+                    {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}
+                ];
+
+                for (let dir of directions) {
+                    const newX = current.x + dir.x;
+                    const newY = current.y + dir.y;
+                    const key = `${newX},${newY}`;
+
+                    if (visited.has(key)) continue;
+                    if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+                    if (obstacleSet.has(key)) continue;
+
+                    visited.add(key);
+                    queue.push({
+                        x: newX,
+                        y: newY,
+                        path: [...current.path, {x: newX, y: newY}]
+                    });
+                }
+            }
+
+            return null; // No path found
         }
 
         // 辅助函数：计算到尾巴的路径（用于跟随尾巴策略）
