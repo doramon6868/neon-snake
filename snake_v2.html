@@ -2977,6 +2977,8 @@
 
         // 辅助函数：检查移动是否安全（不会立即死亡）
         function isSafeMove(newX, newY, excludeTail = true) {
+            const { tileCount } = getGameSettings();
+
             // Check bounds
             if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
                 return false;
