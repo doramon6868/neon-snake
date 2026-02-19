@@ -2256,26 +2256,6 @@
             gameLoop(); // Start game loop again
         }
 
-        // Power-up animation functions
-        function createClockAnimation(x, y) {
-            // 停止菜单水果动画
-            stopMenuFruitAnimation();
-
-            gameMode = 'challenge';
-            isAIMode = false;
-            document.getElementById('menuOverlay').style.display = 'none';
-            document.querySelector('.game-container').style.display = 'block';
-            document.getElementById('goMenuBtn').style.display = 'block';
-
-            // Clear AI interval if switching from AI mode
-            if (aiDecisionInterval) {
-                clearInterval(aiDecisionInterval);
-                aiDecisionInterval = null;
-            }
-
-            restartGame();
-        }
-
         function startRegularMode() {
             // 停止菜单水果动画
             stopMenuFruitAnimation();
