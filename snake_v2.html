@@ -216,6 +216,101 @@
             }
         }
 
+        /* Menu background fruit animation */
+        .menu-fruit {
+            position: fixed;
+            pointer-events: none;
+            z-index: 250;
+            animation: menu-fruit-float 3s ease-out forwards;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+        }
+
+        @keyframes menu-fruit-float {
+            0% {
+                transform: translateY(0) translateX(0) scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            15% {
+                transform: translateY(-30px) translateX(var(--drift)) scale(1) rotate(45deg);
+                opacity: 1;
+            }
+            80% {
+                transform: translateY(-180px) translateX(var(--drift)) scale(1) rotate(180deg);
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-220px) translateX(calc(var(--drift) * 1.5)) scale(0.5) rotate(270deg);
+                opacity: 0;
+            }
+        }
+
+        /* Trophy animation */
+        .trophy-container {
+            position: fixed;
+            pointer-events: none;
+            z-index: 150;
+            animation: trophy-appear 2s ease-out forwards;
+        }
+
+        .trophy-emoji {
+            font-size: 64px;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+            animation: trophy-glow 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes trophy-appear {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            40% {
+                transform: scale(1.2) rotate(10deg);
+                opacity: 1;
+            }
+            60% {
+                transform: scale(1) rotate(-5deg);
+            }
+            80% {
+                transform: scale(1.05) rotate(3deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes trophy-glow {
+            from {
+                filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+            }
+            to {
+                filter: drop-shadow(0 0 40px rgba(255, 215, 0, 1)) drop-shadow(0 0 60px rgba(255, 183, 178, 0.8));
+            }
+        }
+
+        /* Flower spray animation */
+        .flower-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 149;
+            font-size: 20px;
+            animation: flower-fly 1.5s ease-out forwards;
+        }
+
+        @keyframes flower-fly {
+            0% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            30% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0.6) rotate(var(--rot));
+                opacity: 0;
+            }
+        }
+
         /* Menu overlay styles */
         .menu-overlay {
             position: fixed;
@@ -261,7 +356,7 @@
 
         .menu-buttons {
             display: flex;
-            gap: 2rem;
+            gap: 1.5rem;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -310,6 +405,52 @@
         .regular-btn {
             background: linear-gradient(135deg, #B5EAD7 0%, #C7CEEA 100%);
             border: 4px solid #fff;
+        }
+
+        .ai-btn {
+            background: linear-gradient(135deg, #E2F0CB 0%, #B5EAD7 100%);
+            border: 4px solid #fff;
+        }
+
+        .ai-btn .mode-icon {
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+        }
+
+        .ai-vs-btn {
+            background: linear-gradient(135deg, #FFDAC1 0%, #F8B195 100%);
+            border: 4px solid #fff;
+        }
+
+        .ai-vs-btn .mode-icon {
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+        }
+
+        .go-menu-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #FFB7B2, #FFDAC1);
+            border: 2px solid #fff;
+            border-radius: 25px;
+            color: #6B5B73;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 150;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .go-menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .go-menu-btn:active {
+            transform: translateY(0);
         }
 
         .mode-icon {
@@ -389,6 +530,9 @@
         </div>
     </div>
 
+    <!-- Go to Menu button (visible during gameplay) -->
+    <button class="go-menu-btn" id="goMenuBtn" onclick="goToMenu()">Go to Menu</button>
+
     <!-- Main Menu -->
     <div class="menu-overlay" id="menuOverlay">
         <div class="menu-content">
@@ -404,6 +548,16 @@
                     <span class="mode-icon">🎮</span>
                     <span class="mode-name">Regular Mode</span>
                     <span class="mode-desc">Classic fixed speed gameplay</span>
+                </button>
+                <button class="mode-btn ai-btn" onclick="startAIMode()">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-name">AI Mode</span>
+                    <span class="mode-desc">Watch an AI snake play automatically</span>
+                </button>
+                <button class="mode-btn ai-vs-btn" onclick="startAIVsYouMode()">
+                    <span class="mode-icon">⚔️</span>
+                    <span class="mode-name">AI vs YOU</span>
+                    <span class="mode-desc">Battle against AI snake on the same map!</span>
                 </button>
             </div>
         </div>
@@ -426,13 +580,36 @@
         const gameOverlay = document.getElementById('gameOverlay');
         const finalScoreElement = document.getElementById('finalScore');
 
-        // Set responsive canvas size - ensure exact fit for 20x20 grid
+        // Game mode variables - MUST be declared before any functions that use them
+        let gameMode = 'menu'; // 'menu', 'challenge', 'regular', 'ai', or 'aivsyou'
+        let isGameRunning = false;
+        let isAIMode = false;
+        let isAIVsYouMode = false;
+        let aiRespawnTimer = null;
+
+        // AI vs YOU mode - AI snake data
+        let aiSnake = [];
+        let aiDirection = {x: 0, y: 0};
+        let playerWon = false;
+
+        // Set responsive canvas size - ensure exact fit for grid
         function setCanvasSize() {
-            const maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 300, 600);
-            // Round down to nearest multiple of 20 for perfect grid alignment
-            const adjustedSize = Math.floor(maxSize / 20) * 20;
-            canvas.width = adjustedSize;
-            canvas.height = adjustedSize;
+            let maxSize;
+            if (isAIVsYouMode) {
+                // AI vs YOU mode: larger canvas for 30x30 grid
+                maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 300, 800);
+                // Round down to nearest multiple of 30 for perfect grid alignment
+                const adjustedSize = Math.floor(maxSize / 30) * 30;
+                canvas.width = adjustedSize;
+                canvas.height = adjustedSize;
+            } else {
+                // Normal mode: 20x20 grid
+                maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 300, 600);
+                // Round down to nearest multiple of 20 for perfect grid alignment
+                const adjustedSize = Math.floor(maxSize / 20) * 20;
+                canvas.width = adjustedSize;
+                canvas.height = adjustedSize;
+            }
         }
 
         setCanvasSize();
@@ -443,7 +620,8 @@
 
         // Game settings - CORRECT GRID CALCULATION
         function getGameSettings() {
-            const tileCount = 20; // Fixed 20x20 grid
+            // AI vs YOU mode uses 30x30 grid, others use 20x20
+            const tileCount = isAIVsYouMode ? 30 : 20;
             const gridSize = Math.floor(canvas.width / tileCount); // Integer size for each cell
             return { gridSize, tileCount };
         }
@@ -482,7 +660,8 @@
         let gameRunning = true;
         let activePowerUps = []; // Active power-up effects
         let isSlowed = false; // Slow motion state
-        const BASE_FOOD_COUNT = 5; // Base number of foods
+        const BASE_FOOD_COUNT = 5; // Base number of foods (will be adjusted for AI vs YOU mode)
+        const BASE_FOOD_COUNT_AI_VS = 8; // AI vs YOU mode has more food
         const POWERUP_CHANCE = 0.25; // 25% chance for power-up instead of fruit (was 10%)
 
         // Level system configuration (for Challenge Mode)
@@ -498,9 +677,15 @@
             FIXED_SPEED: 150            // Classic snake speed
         };
 
-        // Game mode
-        let gameMode = 'menu'; // 'menu', 'challenge', or 'regular'
-        let isGameRunning = false;
+        // AI snake settings - all blue color scheme
+        const AI_COLORS = {
+            head: '#0066CC',      // Deep blue head
+            body: ['#4A90E2', '#5BA8F7', '#6BB6FF', '#7EC4FF', '#8FD3FF', '#A0E0FF'], // Gradient blues
+            border: '#003D7A'     // Dark blue border
+        };
+
+        // Menu fruit animation interval
+        let menuFruitInterval = null;
 
         // Initialize
         highScoreElement.textContent = highScore;
@@ -509,6 +694,9 @@
         // Show menu on load, hide game container initially
         document.querySelector('.game-container').style.display = 'none';
         document.getElementById('menuOverlay').style.display = 'flex';
+
+        // 启动菜单水果动画
+        startMenuFruitAnimation();
 
         // Debug: Log initial state
         console.log('Game initialized', {
@@ -584,6 +772,10 @@
                         levelElement.style.transform = 'scale(1)';
                         levelElement.style.color = '#FF9AA2'; // Back to strawberry pink
                     }, 500);
+                } else if (gameMode === 'ai') {
+                    // In AI mode, show "AI" instead of level
+                    levelElement.textContent = 'AI';
+                    levelElement.parentElement.style.display = 'block';
                 } else {
                     // Hide level display in regular mode
                     levelElement.parentElement.style.display = 'none';
@@ -675,6 +867,11 @@
         function update() {
             const { tileCount } = getGameSettings();
 
+            // In AI vs YOU mode, update AI snake first
+            if (isAIVsYouMode) {
+                updateAI();
+            }
+
             // If no direction set, don't move
             if (direction.x === 0 && direction.y === 0) {
                 return;
@@ -694,6 +891,17 @@
                 if (head.x === snake[i].x && head.y === snake[i].y) {
                     gameOver();
                     return;
+                }
+            }
+
+            // In AI vs YOU mode, check collision with AI snake
+            if (isAIVsYouMode) {
+                // Player head hits AI snake body -> player loses
+                for (let i = 0; i < aiSnake.length; i++) {
+                    if (head.x === aiSnake[i].x && head.y === aiSnake[i].y) {
+                        gameOver();
+                        return;
+                    }
                 }
             }
 
@@ -752,7 +960,8 @@
                 snake.pop();
             } else {
                 // Generate a new food if we're below the target count
-                if (foods.length < BASE_FOOD_COUNT) {
+                const targetFoodCount = isAIVsYouMode ? BASE_FOOD_COUNT_AI_VS : BASE_FOOD_COUNT;
+                if (foods.length < targetFoodCount) {
                     const newFood = generateSingleFood();
                     if (newFood) {
                         foods.push(newFood);
@@ -798,6 +1007,16 @@
                 if (segment.x === newItem.x && segment.y === newItem.y) {
                     validPosition = false;
                     break;
+                }
+            }
+
+            // In AI vs YOU mode, also check AI snake positions
+            if (validPosition && isAIVsYouMode) {
+                for (let segment of aiSnake) {
+                    if (segment.x === newItem.x && segment.y === newItem.y) {
+                        validPosition = false;
+                        break;
+                    }
                 }
             }
 
@@ -852,16 +1071,25 @@
                 '#C7A2C7'  /* 紫罗兰 */
             ];
 
-            // Draw snake with macaron colors
+            // Draw snake with appropriate colors (AI mode = blue, normal = macaron)
             snake.forEach((segment, index) => {
                 console.log(`Drawing segment ${index} at`, segment);
 
-                // 蛇头 - 草莓粉
-                if (index === 0) {
-                    ctx.fillStyle = '#FF9AA2';
+                if (isAIMode) {
+                    // AI snake - all blue color scheme
+                    if (index === 0) {
+                        ctx.fillStyle = AI_COLORS.head;
+                    } else {
+                        ctx.fillStyle = AI_COLORS.body[index % AI_COLORS.body.length];
+                    }
                 } else {
-                    // 蛇身 - 马卡龙色系，每段不同颜色
-                    ctx.fillStyle = macaronColors[index % macaronColors.length];
+                    // Player snake - 蛇头 - 草莓粉
+                    if (index === 0) {
+                        ctx.fillStyle = '#FF9AA2';
+                    } else {
+                        // 蛇身 - 马卡龙色系，每段不同颜色
+                        ctx.fillStyle = macaronColors[index % macaronColors.length];
+                    }
                 }
 
                 // 绘制蛇身方块
@@ -886,6 +1114,54 @@
                     ctx.fillText(segment.fruit.emoji, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
                 }
             });
+
+            // Draw AI snake in AI vs YOU mode
+            if (isAIVsYouMode) {
+                aiSnake.forEach((segment, index) => {
+                    if (index === 0) {
+                        ctx.fillStyle = AI_COLORS.head;
+                    } else {
+                        ctx.fillStyle = AI_COLORS.body[index % AI_COLORS.body.length];
+                    }
+
+                    // 绘制AI蛇身方块
+                    ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                    // Subtle border
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                    // Add fruit if present - emoji on background
+                    if (segment.fruit && segment.fruit.emoji) {
+                        // Draw white background for fruit
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                        // Draw fruit emoji
+                        ctx.font = `${gridSize * 0.7}px Arial, sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#000000';
+                        ctx.fillText(segment.fruit.emoji, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                    }
+                });
+
+                // Draw labels for snakes
+                ctx.font = `bold ${Math.max(gridSize * 0.4, 12)}px Orbitron, monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Player label (on player snake head)
+                const playerHead = snake[0];
+                ctx.fillStyle = '#FF9AA2';
+                ctx.fillText('YOU', playerHead.x * gridSize + gridSize / 2, playerHead.y * gridSize - gridSize / 2);
+
+                // AI label (on AI snake head)
+                const aiHead = aiSnake[0];
+                ctx.fillStyle = '#4A90E2';
+                ctx.fillText('AI', aiHead.x * gridSize + gridSize / 2, aiHead.y * gridSize - gridSize / 2);
+            }
 
             // Draw all foods with fruit emoji - on cream background
             foods.forEach(food => {
@@ -1266,8 +1542,9 @@
             // Clear existing foods
             foods = [];
 
-            // 随机决定食物数量（3-5个）
-            const foodCount = 3 + Math.floor(Math.random() * 3);
+            // 随机决定食物数量（普通模式3-5个，AI vs YOU模式6-8个）
+            const targetBaseCount = isAIVsYouMode ? BASE_FOOD_COUNT_AI_VS : BASE_FOOD_COUNT;
+            const foodCount = isAIVsYouMode ? 6 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 3);
 
             // Generate multiple foods
             for (let i = 0; i < foodCount; i++) {
@@ -1289,6 +1566,16 @@
                         if (segment.x === newFood.x && segment.y === newFood.y) {
                             validPosition = false;
                             break;
+                        }
+                    }
+
+                    // In AI vs YOU mode, also check AI snake positions
+                    if (validPosition && isAIVsYouMode) {
+                        for (let segment of aiSnake) {
+                            if (segment.x === newFood.x && segment.y === newFood.y) {
+                                validPosition = false;
+                                break;
+                            }
                         }
                     }
 
@@ -1322,6 +1609,16 @@
                         }
                     }
 
+                    // In AI vs YOU mode, also check AI snake positions
+                    if (validPosition && isAIVsYouMode) {
+                        for (let segment of aiSnake) {
+                            if (segment.x === newFood.x && segment.y === newFood.y) {
+                                validPosition = false;
+                                break;
+                            }
+                        }
+                    }
+
                     for (let existingFood of foods) {
                         if (existingFood.x === newFood.x && existingFood.y === newFood.y) {
                             validPosition = false;
@@ -1349,8 +1646,8 @@
                 scoreElement.style.color = '#FF9AA2'; /* 草莓粉 */
             }, 200);
 
-            // Update high score
-            if (score > highScore) {
+            // Update high score (skip in AI mode and AI vs YOU mode)
+            if (!isAIMode && !isAIVsYouMode && score > highScore) {
                 highScore = score;
                 highScoreElement.textContent = highScore;
                 localStorage.setItem('snakeHighScore', highScore);
@@ -1363,7 +1660,43 @@
         function gameOver() {
             gameRunning = false;
             isGameRunning = false;
-            finalScoreElement.textContent = score;
+
+            // In AI mode, auto-respawn after 2 seconds instead of showing game over
+            if (isAIMode) {
+                draw(); // Keep the final frame visible
+                aiRespawnTimer = setTimeout(() => {
+                    if (isAIMode && gameMode === 'ai') {
+                        restartAIGame();
+                    }
+                }, 2000);
+                return;
+            }
+
+            // AI vs YOU mode - show win/lose message
+            if (isAIVsYouMode) {
+                const overlayContent = gameOverlay.querySelector('.overlay-content');
+                const gameOverTitle = overlayContent.querySelector('h2');
+                const finalScoreP = overlayContent.querySelector('p');
+
+                if (playerWon) {
+                    gameOverTitle.textContent = 'YOU WIN!';
+                    gameOverTitle.style.color = '#E2F0CB';
+                    finalScoreP.innerHTML = 'You defeated the AI!<br><br>Score: <span id="finalScore">' + score + '</span>';
+                } else {
+                    gameOverTitle.textContent = 'AI WINS!';
+                    gameOverTitle.style.color = '#FF9AA2';
+                    finalScoreP.innerHTML = 'The AI defeated you!<br><br>Score: <span id="finalScore">' + score + '</span>';
+                }
+
+                gameOverlay.style.display = 'flex';
+                return;
+            }
+
+            // Update final score - need to re-get element as it may have been replaced in AI vs YOU mode
+            const currentFinalScoreElement = document.getElementById('finalScore');
+            if (currentFinalScoreElement) {
+                currentFinalScoreElement.textContent = score;
+            }
 
             // Show level reached in challenge mode
             const finalLevelDisplay = document.getElementById('finalLevelDisplay');
@@ -1376,6 +1709,11 @@
             }
 
             gameOverlay.style.display = 'flex';
+
+            // 触发高分庆祝动画（分数 > 100）
+            if (score > 100) {
+                setTimeout(() => createTrophyAnimation(score), 300);
+            }
         }
 
         // Power-up animation functions
@@ -1443,6 +1781,63 @@
                     }, 2000);
                 }, i * 50);
             }
+        }
+
+        // Menu background fruit animation
+        function startMenuFruitAnimation() {
+            // 停止现有动画
+            stopMenuFruitAnimation();
+
+            // 立即创建一个水果
+            createMenuFruit();
+
+            // 定期创建水果 (800-1500ms 随机间隔)
+            menuFruitInterval = setInterval(() => {
+                const menuOverlay = document.getElementById('menuOverlay');
+                if (menuOverlay && menuOverlay.style.display !== 'none') {
+                    createMenuFruit();
+                }
+            }, 800 + Math.random() * 700);
+        }
+
+        function stopMenuFruitAnimation() {
+            if (menuFruitInterval) {
+                clearInterval(menuFruitInterval);
+                menuFruitInterval = null;
+            }
+            // 清除所有现有的菜单水果元素
+            document.querySelectorAll('.menu-fruit').forEach(fruit => fruit.remove());
+        }
+
+        function createMenuFruit() {
+            const fruit = document.createElement('div');
+            fruit.className = 'menu-fruit';
+
+            // 随机水果类型
+            const randomFruit = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+            fruit.textContent = randomFruit.emoji;
+
+            // 随机大小 (24-32px)
+            const size = 24 + Math.random() * 8;
+            fruit.style.fontSize = size + 'px';
+
+            // 从底部随机位置生成 (留出边距避免贴边)
+            const startX = 10 + Math.random() * (window.innerWidth - 20);
+            fruit.style.left = startX + 'px';
+            fruit.style.bottom = '-50px';
+
+            // 水平飘动范围 (+/- 30px)
+            const drift = (Math.random() - 0.5) * 60;
+            fruit.style.setProperty('--drift', drift + 'px');
+
+            document.body.appendChild(fruit);
+
+            // 动画结束后移除
+            setTimeout(() => {
+                if (fruit.parentNode) {
+                    fruit.remove();
+                }
+            }, 3000);
         }
 
         function createRocketAnimation(startX, startY, direction) {
@@ -1771,6 +2166,13 @@
             updateLevelDisplay();
             gameRunning = true;
             isGameRunning = true;
+
+            // Clear AI state when restarting regular game
+            if (!isAIMode && !isAIVsYouMode && aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+                aiDecisionInterval = null;
+            }
+
             generateFood();
             gameOverlay.style.display = 'none';
             draw(); // Redraw initial state
@@ -1779,16 +2181,40 @@
 
         // Menu functions
         function startChallengeMode() {
+            // 停止菜单水果动画
+            stopMenuFruitAnimation();
+
             gameMode = 'challenge';
+            isAIMode = false;
             document.getElementById('menuOverlay').style.display = 'none';
             document.querySelector('.game-container').style.display = 'block';
+            document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Clear AI interval if switching from AI mode
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+                aiDecisionInterval = null;
+            }
+
             restartGame();
         }
 
         function startRegularMode() {
+            // 停止菜单水果动画
+            stopMenuFruitAnimation();
+
             gameMode = 'regular';
+            isAIMode = false;
             document.getElementById('menuOverlay').style.display = 'none';
             document.querySelector('.game-container').style.display = 'block';
+            document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Clear AI interval if switching from AI mode
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+                aiDecisionInterval = null;
+            }
+
             restartGame();
         }
 
@@ -1796,9 +2222,590 @@
             gameMode = 'menu';
             gameRunning = false;
             isGameRunning = false;
+            isAIMode = false;
+            isAIVsYouMode = false;
+
+            // Clear AI respawn timer if active
+            if (aiRespawnTimer) {
+                clearTimeout(aiRespawnTimer);
+                aiRespawnTimer = null;
+            }
+
+            // Clear AI decision interval
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+                aiDecisionInterval = null;
+            }
+
+            // Hide Go to Menu button
+            document.getElementById('goMenuBtn').style.display = 'none';
+
+            // Reset game over overlay title
+            const overlayContent = gameOverlay.querySelector('.overlay-content');
+            if (overlayContent) {
+                const gameOverTitle = overlayContent.querySelector('h2');
+                const finalScoreP = overlayContent.querySelector('p');
+                if (gameOverTitle) {
+                    gameOverTitle.textContent = 'GAME OVER';
+                    gameOverTitle.style.color = '#6B5B73';
+                }
+                if (finalScoreP) {
+                    finalScoreP.innerHTML = 'Final Score: <span id="finalScore">0</span>';
+                }
+            }
+
             gameOverlay.style.display = 'none';
             document.querySelector('.game-container').style.display = 'none';
             document.getElementById('menuOverlay').style.display = 'flex';
+
+            // 启动菜单水果动画
+            startMenuFruitAnimation();
+        }
+
+        // AI Mode functions
+        function startAIMode() {
+            // 停止菜单水果动画
+            stopMenuFruitAnimation();
+
+            gameMode = 'ai';
+            isAIMode = true;
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Hide level display in AI mode
+            const levelElement = document.getElementById('level');
+            if (levelElement && levelElement.parentElement) {
+                levelElement.parentElement.style.display = 'none';
+            }
+
+            restartAIGame();
+        }
+
+        function restartAIGame() {
+            setCanvasSize();
+            snake = [{x: 10, y: 10, fruit: null}];
+            direction = {x: 0, y: 0};
+            score = 0;
+            updateScore();
+            gameRunning = true;
+            isGameRunning = true;
+            generateFood();
+            gameOverlay.style.display = 'none';
+            draw();
+            gameLoop();
+
+            // Start AI decision making
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+            }
+            aiDecisionInterval = setInterval(makeAIDecision, 100);
+        }
+
+        let aiDecisionInterval = null;
+
+        // AI vs YOU Mode functions
+        function startAIVsYouMode() {
+            // 停止菜单水果动画
+            stopMenuFruitAnimation();
+
+            gameMode = 'aivsyou';
+            isAIVsYouMode = true;
+            isAIMode = false;
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Update level display to show "VS"
+            const levelElement = document.getElementById('level');
+            if (levelElement && levelElement.parentElement) {
+                levelElement.textContent = 'VS';
+                levelElement.parentElement.style.display = 'block';
+            }
+
+            restartAIVsYouGame();
+        }
+
+        function restartAIVsYouGame() {
+            setCanvasSize();
+            const { tileCount } = getGameSettings();
+
+            // Initialize player snake at left side
+            snake = [{x: 5, y: 15, fruit: null}];
+            direction = {x: 0, y: 0};
+
+            // Initialize AI snake at right side
+            aiSnake = [{x: tileCount - 6, y: 15, fruit: null}];
+            aiDirection = {x: 0, y: 0};
+
+            score = 0;
+            playerWon = false;
+            updateScore();
+            gameRunning = true;
+            isGameRunning = true;
+            generateFood();
+            gameOverlay.style.display = 'none';
+            draw();
+            gameLoop();
+
+            // Start AI decision making
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+            }
+            aiDecisionInterval = setInterval(makeAIVsYouDecision, 100);
+        }
+
+        // Update AI snake position in AI vs YOU mode
+        function updateAI() {
+            if (!isAIVsYouMode || !gameRunning) return;
+
+            const { tileCount } = getGameSettings();
+
+            // If no direction set, don't move
+            if (aiDirection.x === 0 && aiDirection.y === 0) {
+                return;
+            }
+
+            // Move AI snake head
+            const head = {x: aiSnake[0].x + aiDirection.x, y: aiSnake[0].y + aiDirection.y};
+
+            // Check boundaries - AI dies
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                playerWon = true;
+                gameOver();
+                return;
+            }
+
+            // Check self collision - AI dies
+            for (let i = 1; i < aiSnake.length; i++) {
+                if (head.x === aiSnake[i].x && head.y === aiSnake[i].y) {
+                    playerWon = true;
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Check collision with player snake
+            // AI head hits player snake body -> AI dies, player wins
+            for (let i = 0; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    playerWon = true;
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Move AI snake
+            aiSnake.unshift({...head, fruit: null});
+
+            // Check food collision
+            let foodEaten = false;
+            for (let i = 0; i < foods.length; i++) {
+                if (head.x === foods[i].x && head.y === foods[i].y) {
+                    const eatenItem = foods[i];
+
+                    if (eatenItem.isPowerUp) {
+                        // AI gets power-up effects too
+                        switch(eatenItem.type) {
+                            case 'slow':
+                                activateSlow();
+                                break;
+                            case 'extra':
+                                activateExtra();
+                                break;
+                            case 'line':
+                                activateLine();
+                                break;
+                            case 'blizzard':
+                                activateBlizzard();
+                                break;
+                            case 'coconut':
+                                activateCoconutPalm();
+                                break;
+                            case 'cherrytree':
+                                activateCherryTree();
+                                break;
+                        }
+                        foods.splice(i, 1);
+                        foodEaten = true;
+                        break;
+                    } else {
+                        // Handle normal fruit
+                        eatenItem.emoji = foods[i].emoji;
+                        aiSnake[0].fruit = eatenItem;
+                        foods.splice(i, 1);
+                        foodEaten = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foodEaten) {
+                // Remove tail segment
+                aiSnake.pop();
+            } else {
+                // Generate a new food if we're below the target count
+                const targetFoodCount = BASE_FOOD_COUNT_AI_VS;
+                if (foods.length < targetFoodCount) {
+                    const newFood = generateSingleFood();
+                    if (newFood) {
+                        foods.push(newFood);
+                    }
+                }
+            }
+
+            // Shift fruits through the AI snake body
+            for (let i = aiSnake.length - 1; i > 0; i--) {
+                aiSnake[i].fruit = aiSnake[i - 1].fruit;
+            }
+            aiSnake[0].fruit = null;
+        }
+
+        // AI decision making for AI vs YOU mode
+        function makeAIVsYouDecision() {
+            if (!gameRunning || !isAIVsYouMode) return;
+
+            const head = aiSnake[0];
+            const { tileCount } = getGameSettings();
+
+            // Find nearest food
+            let nearestFood = null;
+            let minDistance = Infinity;
+
+            for (let food of foods) {
+                // Skip power-ups in simple AI mode, go for fruits only
+                if (food.isPowerUp) continue;
+
+                const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestFood = food;
+                }
+            }
+
+            // If no fruits found, try any food
+            if (!nearestFood && foods.length > 0) {
+                nearestFood = foods[0];
+            }
+
+            if (!nearestFood) return;
+
+            // AI imperfection factors
+            const MISTAKE_CHANCE = 0.2; // 20% chance to make a suboptimal move
+            const IGNORE_SPACE_CHANCE = 0.3; // 30% chance to ignore space evaluation
+            const MAKE_MISTAKE = Math.random() < MISTAKE_CHANCE;
+            const IGNORE_SPACE = Math.random() < IGNORE_SPACE_CHANCE;
+
+            // Get possible directions (excluding reverse)
+            const currentDir = aiDirection;
+            const possibleDirs = [
+                {x: 0, y: -1, name: 'up'},    // up
+                {x: 0, y: 1, name: 'down'},   // down
+                {x: -1, y: 0, name: 'left'},  // left
+                {x: 1, y: 0, name: 'right'}   // right
+            ].filter(dir => {
+                // Can't go reverse
+                if (currentDir.x !== 0 || currentDir.y !== 0) {
+                    if (dir.x === -currentDir.x && dir.y === -currentDir.y) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // Collect all valid moves
+            let validMoves = [];
+
+            for (let dir of possibleDirs) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                // Check if move is valid (not hitting wall)
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
+                    continue;
+                }
+
+                // Check if hitting self
+                let hitsSelf = false;
+                for (let i = 0; i < aiSnake.length; i++) {
+                    if (aiSnake[i].x === newX && aiSnake[i].y === newY) {
+                        hitsSelf = true;
+                        break;
+                    }
+                }
+                if (hitsSelf) continue;
+
+                // Check if hitting player snake
+                let hitsPlayer = false;
+                for (let i = 0; i < snake.length; i++) {
+                    if (snake[i].x === newX && snake[i].y === newY) {
+                        hitsPlayer = true;
+                        break;
+                    }
+                }
+                if (hitsPlayer) continue;
+
+                // Calculate score for this direction
+                let score = 0;
+
+                // Distance to food (prefer closer)
+                const distToFood = Math.abs(newX - nearestFood.x) + Math.abs(newY - nearestFood.y);
+                score -= distToFood * 10;
+
+                // Bonus for moving toward food
+                if (distToFood < minDistance) {
+                    score += 50;
+                }
+
+                // Check if this move leads to food
+                if (newX === nearestFood.x && newY === nearestFood.y) {
+                    score += 200; // Big bonus for eating
+                }
+
+                // Prefer moves that don't trap us (unless AI is ignoring space)
+                if (!IGNORE_SPACE) {
+                    const spaceScore = countAccessibleSpaceAIVsYou(newX, newY, tileCount);
+                    score += spaceScore * 2;
+                }
+
+                validMoves.push({dir, score});
+            }
+
+            if (validMoves.length === 0) return;
+
+            // Sort by score (best first)
+            validMoves.sort((a, b) => b.score - a.score);
+
+            let chosenMove;
+
+            if (MAKE_MISTAKE && validMoves.length > 1) {
+                // Make a mistake: pick a random move instead of the best one
+                const mistakeIndex = Math.floor(Math.random() * validMoves.length);
+                chosenMove = validMoves[mistakeIndex];
+            } else {
+                // Pick the best move
+                chosenMove = validMoves[0];
+            }
+
+            aiDirection = {x: chosenMove.dir.x, y: chosenMove.dir.y};
+        }
+
+        // Count accessible space from a position in AI vs YOU mode
+        function countAccessibleSpaceAIVsYou(startX, startY, tileCount) {
+            const visited = new Set();
+            const queue = [{x: startX, y: startY}];
+            visited.add(`${startX},${startY}`);
+            let count = 0;
+            const maxCount = 50; // Limit for performance
+
+            while (queue.length > 0 && count < maxCount) {
+                const {x, y} = queue.shift();
+                count++;
+
+                const neighbors = [
+                    {x: x + 1, y: y},
+                    {x: x - 1, y: y},
+                    {x: x, y: y + 1},
+                    {x: x, y: y - 1}
+                ];
+
+                for (let n of neighbors) {
+                    if (n.x < 0 || n.x >= tileCount || n.y < 0 || n.y >= tileCount) continue;
+
+                    const key = `${n.x},${n.y}`;
+                    if (visited.has(key)) continue;
+
+                    // Check if occupied by AI snake
+                    let occupied = false;
+                    for (let segment of aiSnake) {
+                        if (segment.x === n.x && segment.y === n.y) {
+                            occupied = true;
+                            break;
+                        }
+                    }
+
+                    // Check if occupied by player snake
+                    if (!occupied) {
+                        for (let segment of snake) {
+                            if (segment.x === n.x && segment.y === n.y) {
+                                occupied = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!occupied) {
+                        visited.add(key);
+                        queue.push(n);
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        // AI pathfinding - find the best direction to reach food
+        function makeAIDecision() {
+            if (!gameRunning || !isAIMode) return;
+
+            const head = snake[0];
+            const { tileCount } = getGameSettings();
+
+            // Find nearest food
+            let nearestFood = null;
+            let minDistance = Infinity;
+
+            for (let food of foods) {
+                // Skip power-ups in simple AI mode, go for fruits only
+                if (food.isPowerUp) continue;
+
+                const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestFood = food;
+                }
+            }
+
+            // If no fruits found, try any food
+            if (!nearestFood && foods.length > 0) {
+                nearestFood = foods[0];
+            }
+
+            if (!nearestFood) return;
+
+            // AI imperfection factors
+            const MISTAKE_CHANCE = 0.2; // 20% chance to make a suboptimal move
+            const IGNORE_SPACE_CHANCE = 0.3; // 30% chance to ignore space evaluation
+            const MAKE_MISTAKE = Math.random() < MISTAKE_CHANCE;
+            const IGNORE_SPACE = Math.random() < IGNORE_SPACE_CHANCE;
+
+            // Get possible directions (excluding reverse)
+            const currentDir = direction;
+            const possibleDirs = [
+                {x: 0, y: -1, name: 'up'},    // up
+                {x: 0, y: 1, name: 'down'},   // down
+                {x: -1, y: 0, name: 'left'},  // left
+                {x: 1, y: 0, name: 'right'}   // right
+            ].filter(dir => {
+                // Can't go reverse
+                if (currentDir.x !== 0 || currentDir.y !== 0) {
+                    if (dir.x === -currentDir.x && dir.y === -currentDir.y) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // Collect all valid moves
+            let validMoves = [];
+
+            for (let dir of possibleDirs) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                // Check if move is valid (not hitting wall)
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
+                    continue;
+                }
+
+                // Check if hitting self
+                let hitsSelf = false;
+                for (let i = 0; i < snake.length; i++) {
+                    if (snake[i].x === newX && snake[i].y === newY) {
+                        hitsSelf = true;
+                        break;
+                    }
+                }
+                if (hitsSelf) continue;
+
+                // Calculate score for this direction
+                let score = 0;
+
+                // Distance to food (prefer closer)
+                const distToFood = Math.abs(newX - nearestFood.x) + Math.abs(newY - nearestFood.y);
+                score -= distToFood * 10;
+
+                // Bonus for moving toward food
+                if (distToFood < minDistance) {
+                    score += 50;
+                }
+
+                // Check if this move leads to food
+                if (newX === nearestFood.x && newY === nearestFood.y) {
+                    score += 200; // Big bonus for eating
+                }
+
+                // Prefer moves that don't trap us (unless AI is ignoring space)
+                if (!IGNORE_SPACE) {
+                    const spaceScore = countAccessibleSpace(newX, newY, tileCount);
+                    score += spaceScore * 2;
+                }
+
+                validMoves.push({dir, score});
+            }
+
+            if (validMoves.length === 0) return;
+
+            // Sort by score (best first)
+            validMoves.sort((a, b) => b.score - a.score);
+
+            let chosenMove;
+
+            if (MAKE_MISTAKE && validMoves.length > 1) {
+                // Make a mistake: pick a random move instead of the best one
+                // Prefer worse moves but occasionally pick something decent
+                const mistakeIndex = Math.floor(Math.random() * validMoves.length);
+                chosenMove = validMoves[mistakeIndex];
+            } else {
+                // Pick the best move
+                chosenMove = validMoves[0];
+            }
+
+            direction = {x: chosenMove.dir.x, y: chosenMove.dir.y};
+        }
+
+        // Count accessible space from a position (flood fill)
+        function countAccessibleSpace(startX, startY, tileCount) {
+            const visited = new Set();
+            const queue = [{x: startX, y: startY}];
+            visited.add(`${startX},${startY}`);
+            let count = 0;
+            const maxCount = 50; // Limit for performance
+
+            while (queue.length > 0 && count < maxCount) {
+                const {x, y} = queue.shift();
+                count++;
+
+                const neighbors = [
+                    {x: x + 1, y: y},
+                    {x: x - 1, y: y},
+                    {x: x, y: y + 1},
+                    {x: x, y: y - 1}
+                ];
+
+                for (let n of neighbors) {
+                    if (n.x < 0 || n.x >= tileCount || n.y < 0 || n.y >= tileCount) continue;
+
+                    const key = `${n.x},${n.y}`;
+                    if (visited.has(key)) continue;
+
+                    // Check if occupied by snake
+                    let occupied = false;
+                    for (let segment of snake) {
+                        if (segment.x === n.x && segment.y === n.y) {
+                            occupied = true;
+                            break;
+                        }
+                    }
+
+                    if (!occupied) {
+                        visited.add(key);
+                        queue.push(n);
+                    }
+                }
+            }
+
+            return count;
         }
 
         // Firework types
@@ -1942,6 +2949,83 @@
             }
         }
 
+        // Trophy and flower spray animation for high scores
+        const flowerEmojis = ['🌸', '🌺', '🌻', '🌷', '🌼', '💐', '🌹'];
+
+        function createTrophyAnimation(finalScore) {
+            // 只在分数 > 100 时显示
+            if (finalScore <= 100) return;
+
+            // 获取游戏结束弹窗的位置
+            const overlayContent = document.querySelector('.game-overlay .overlay-content');
+            if (!overlayContent) return;
+
+            const rect = overlayContent.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // 创建奖杯容器
+            const trophyContainer = document.createElement('div');
+            trophyContainer.className = 'trophy-container';
+            trophyContainer.style.left = (centerX - 32) + 'px';
+            trophyContainer.style.top = (centerY - 50) + 'px';
+
+            // 创建奖杯emoji
+            const trophy = document.createElement('div');
+            trophy.className = 'trophy-emoji';
+            trophy.textContent = '🏆';
+
+            trophyContainer.appendChild(trophy);
+            document.body.appendChild(trophyContainer);
+
+            // 延迟一点后喷射花朵
+            setTimeout(() => {
+                createFlowerSpray(centerX, centerY);
+            }, 400);
+
+            // 2秒后移除奖杯
+            setTimeout(() => {
+                if (trophyContainer.parentNode) {
+                    trophyContainer.remove();
+                }
+            }, 2500);
+        }
+
+        function createFlowerSpray(x, y) {
+            const flowerCount = 24 + Math.floor(Math.random() * 6); // 24-30 朵花
+
+            for (let i = 0; i < flowerCount; i++) {
+                setTimeout(() => {
+                    const flower = document.createElement('div');
+                    flower.className = 'flower-particle';
+
+                    // 随机花朵类型
+                    const randomFlower = flowerEmojis[Math.floor(Math.random() * flowerEmojis.length)];
+                    flower.textContent = randomFlower;
+
+                    // 初始位置
+                    flower.style.left = x + 'px';
+                    flower.style.top = y + 'px';
+
+                    // 随机角度和速度 (向外喷射)
+                    const angle = (Math.PI * 2 * i) / flowerCount + (Math.random() - 0.5) * 0.5;
+                    const velocity = 60 + Math.random() * 60; // 60-120px
+                    const tx = Math.cos(angle) * velocity;
+                    const ty = Math.sin(angle) * velocity + 50; // 加上重力效果
+
+                    // 随机旋转
+                    const rotation = Math.random() * 360;
+
+                    flower.style.setProperty('--tx', tx + 'px');
+                    flower.style.setProperty('--ty', ty + 'px');
+                    flower.style.setProperty('--rot', rotation + 'deg');
+
+                    document.body.appendChild(flower);
+                    setTimeout(() => flower.remove(), 1500);
+                }, i * 30);
+            }
+        }
+
         function createParticles(eatenFood) {
             const { gridSize } = getGameSettings();
             const canvas = document.getElementById('gameCanvas');
@@ -2011,6 +3095,9 @@
 
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
+            // Disable keyboard controls in AI mode
+            if (isAIMode) return;
+
             if (!gameRunning && e.key !== 'Enter' && e.key !== ' ') return;
 
             switch(e.key) {
@@ -2056,11 +3143,17 @@
         let touchStartY = 0;
 
         canvas.addEventListener('touchstart', (e) => {
+            // Disable touch controls in AI mode
+            if (isAIMode) return;
+
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         });
 
         canvas.addEventListener('touchend', (e) => {
+            // Disable touch controls in AI mode
+            if (isAIMode) return;
+
             const touchEndX = e.changedTouches[0].clientX;
             const touchEndY = e.changedTouches[0].clientY;
 
