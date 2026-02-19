@@ -1726,7 +1726,7 @@
             if (isAIMode) {
                 draw(); // Keep the final frame visible
                 aiRespawnTimer = setTimeout(() => {
-                    if (isAIMode && gameMode === 'ai') {
+                    if (isAIMode) {
                         restartAIGame();
                     }
                 }, 2000);
@@ -2291,6 +2291,29 @@
                 clearInterval(aiDecisionInterval);
                 aiDecisionInterval = null;
             }
+
+            restartGame();
+        }
+
+        function startChallengeMode() {
+            // 停止菜单水果动画
+            stopMenuFruitAnimation();
+
+            gameMode = 'challenge';
+            isAIMode = false;
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.querySelector('.game-container').style.display = 'block';
+            document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Clear AI interval if switching from AI mode
+            if (aiDecisionInterval) {
+                clearInterval(aiDecisionInterval);
+                aiDecisionInterval = null;
+            }
+
+            // 重置等级
+            level = 1;
+            updateLevelDisplay();
 
             restartGame();
         }
