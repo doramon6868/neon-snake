@@ -3217,13 +3217,77 @@
                 return;
             }
 
-            // 3. 评估所有食物，按综合评分排序
+            // ===== 小蛇简化策略（少于8节） =====
+            // 小蛇时更激进地吃食物，不做复杂的保守检查
+            if (snake.length < 8) {
+                // 找最近的食物
+                let nearestFood = null;
+                let nearestPath = null;
+                let minDist = Infinity;
+
+                for (let food of foods) {
+                    const path = findPathToFood(head.x, head.y, food.x, food.y, true);
+                    if (path && path.length < minDist) {
+                        minDist = path.length;
+                        nearestFood = food;
+                        nearestPath = path;
+                    }
+                }
+
+                if (nearestPath && nearestPath.length > 0) {
+                    const next = nearestPath[0];
+                    const dirX = next.x - head.x;
+                    const dirY = next.y - head.y;
+
+                    // 只要移动是安全的就直接去吃
+                    const isMoveSafe = safeMoves.some(m => m.x === dirX && m.y === dirY);
+                    if (isMoveSafe) {
+                        direction = {x: dirX, y: dirY};
+                        return;
+                    }
+                }
+
+                // 找不到路径时，选择离食物最近的移动
+                if (foods.length > 0) {
+                    let bestMove = null;
+                    let bestDist = Infinity;
+
+                    for (let move of safeMoves) {
+                        for (let food of foods) {
+                            const dist = Math.abs(move.newX - food.x) + Math.abs(move.newY - food.y);
+                            if (dist < bestDist) {
+                                bestDist = dist;
+                                bestMove = move;
+                            }
+                        }
+                    }
+
+                    if (bestMove) {
+                        direction = {x: bestMove.x, y: bestMove.y};
+                        return;
+                    }
+                }
+
+                // 最后选择空间最大的移动
+                let bestMove = safeMoves[0];
+                let bestSpace = 0;
+                for (let move of safeMoves) {
+                    const space = countAccessibleSpace(move.newX, move.newY, tileCount, true);
+                    if (space > bestSpace) {
+                        bestSpace = space;
+                        bestMove = move;
+                    }
+                }
+                direction = {x: bestMove.x, y: bestMove.y};
+                return;
+            }
+
+            // ===== 中等蛇策略（8-30节） =====
+            // 进行食物评估，但简化安全检查
             const evaluations = foods.map(f => evaluateFood(f)).filter(e => e !== null);
             evaluations.sort((a, b) => b.score - a.score);
 
-            // 4. 尝试吃最安全且评分高的食物
             for (let eval of evaluations) {
-                // 检查移动是否在安全移动列表中
                 const next = eval.path[0];
                 const dirX = next.x - head.x;
                 const dirY = next.y - head.y;
@@ -3231,15 +3295,8 @@
                 const isMoveSafe = safeMoves.some(m => m.x === dirX && m.y === dirY);
                 if (!isMoveSafe) continue;
 
-                // 安全检查
+                // 中等蛇只做基本安全检查，不做深度前向检查
                 if (!eval.isSafe) continue;
-
-                // 前向检查
-                const forwardCheck = performForwardChecking(eval.path);
-                if (!forwardCheck.isSafe) continue;
-
-                // 时间窗口检查
-                if (isTimeTrap(eval.path, tileCount)) continue;
 
                 // 执行移动
                 direction = {x: dirX, y: dirY};
@@ -3553,11 +3610,12 @@
             const { tileCount } = getGameSettings();
             const totalCells = tileCount * tileCount;
             const snakeRatio = snake.length / totalCells;
-            // 当蛇身超过35%地图时启用
-            return snakeRatio >= 0.35;
+            // 当蛇身超过50%地图且至少20节时才启用哈密尔顿模式
+            // 避免小蛇时过度保守
+            return snake.length >= 20 && snakeRatio >= 0.50;
         }
 
-        // 执行哈密尔顿移动
+        // 执行哈密尔顿移动（改进版 - 允许临时偏离吃食物）
         function makeHamiltonianMove() {
             const { tileCount } = getGameSettings();
             const head = snake[0];
@@ -3567,15 +3625,88 @@
                 hamiltonianCycle.initialize(tileCount);
             }
 
-            const dir = hamiltonianCycle.getDirection(head.x, head.y);
-            if (!dir) return null;
+            // 获取当前在回路中的索引
+            const currentIndex = hamiltonianCycle.getIndex(head.x, head.y);
+            if (currentIndex === -1) return null;
 
-            const newX = head.x + dir.x;
-            const newY = head.y + dir.y;
+            // 检查是否有食物在哈密尔顿回路上且可以安全到达
+            let bestFood = null;
+            let bestFoodIndex = -1;
+            let minFoodDistance = Infinity;
 
-            // 检查是否安全（在哈密尔顿回路中应该总是安全的）
-            if (isSafeMove(newX, newY, true)) {
-                return dir;
+            for (let food of foods) {
+                const foodIndex = hamiltonianCycle.getIndex(food.x, food.y);
+                if (foodIndex === -1) continue;
+
+                // 计算从当前位置沿回路到食物的距离
+                let dist = 0;
+                let current = currentIndex;
+                while (current !== foodIndex && dist < tileCount * tileCount) {
+                    current = hamiltonianCycle.cycle[current].nextIndex;
+                    dist++;
+                }
+
+                // 检查食物是否在前进方向上且距离合适
+                if (dist > 0 && dist < minFoodDistance && dist <= snake.length + 5) {
+                    // 检查路径是否安全
+                    let pathSafe = true;
+                    current = currentIndex;
+                    for (let i = 0; i < dist && i < 10; i++) { // 最多检查10步
+                        current = hamiltonianCycle.cycle[current].nextIndex;
+                        const pos = hamiltonianCycle.cycle[current];
+                        if (!isSafeMove(pos.x, pos.y, true)) {
+                            pathSafe = false;
+                            break;
+                        }
+                    }
+
+                    if (pathSafe) {
+                        minFoodDistance = dist;
+                        bestFood = food;
+                        bestFoodIndex = foodIndex;
+                    }
+                }
+            }
+
+            // 获取哈密尔顿回路的下一个方向
+            const nextIndex = hamiltonianCycle.cycle[currentIndex].nextIndex;
+            const nextPos = hamiltonianCycle.cycle[nextIndex];
+            const hamiltonDir = {
+                x: nextPos.x - head.x,
+                y: nextPos.y - head.y
+            };
+
+            // 如果下一步就是食物，直接去吃
+            if (bestFood && minFoodDistance === 1) {
+                const foodDirX = bestFood.x - head.x;
+                const foodDirY = bestFood.y - head.y;
+                if (isSafeMove(bestFood.x, bestFood.y, true)) {
+                    return { x: foodDirX, y: foodDirY };
+                }
+            }
+
+            // 优先沿哈密尔顿回路移动
+            if (isSafeMove(nextPos.x, nextPos.y, true)) {
+                return hamiltonDir;
+            }
+
+            // 如果回路被堵住，尝试其他安全移动
+            const directions = [
+                { x: 0, y: -1 }, { x: 0, y: 1 },
+                { x: -1, y: 0 }, { x: 1, y: 0 }
+            ].filter(dir => {
+                if (direction.x !== 0 || direction.y !== 0) {
+                    if (dir.x === -direction.x && dir.y === -direction.y) return false;
+                }
+                return true;
+            });
+
+            for (let dir of directions) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+                if (isSafeMove(newX, newY, true)) {
+                    return dir;
+                }
             }
 
             return null;
