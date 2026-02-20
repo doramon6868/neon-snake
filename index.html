@@ -2882,40 +2882,16 @@
             aiSnake[0].fruit = null;
         }
 
-        // AI decision making for AI vs YOU mode
+        // AI decision making for AI vs YOU mode (改进版)
         function makeAIVsYouDecision() {
             if (!gameRunning || !isAIVsYouMode) return;
 
             const head = aiSnake[0];
             const { tileCount } = getGameSettings();
 
-            // Find nearest food
-            let nearestFood = null;
-            let minDistance = Infinity;
-
-            for (let food of foods) {
-                // Skip power-ups in simple AI mode, go for fruits only
-                if (food.isPowerUp) continue;
-
-                const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestFood = food;
-                }
-            }
-
-            // If no fruits found, try any food
-            if (!nearestFood && foods.length > 0) {
-                nearestFood = foods[0];
-            }
-
-            if (!nearestFood) return;
-
             // AI imperfection factors
-            const MISTAKE_CHANCE = 0.2; // 20% chance to make a suboptimal move
-            const IGNORE_SPACE_CHANCE = 0.3; // 30% chance to ignore space evaluation
+            const MISTAKE_CHANCE = 0.15; // 15% chance to make a suboptimal move
             const MAKE_MISTAKE = Math.random() < MISTAKE_CHANCE;
-            const IGNORE_SPACE = Math.random() < IGNORE_SPACE_CHANCE;
 
             // Get possible directions (excluding reverse)
             const currentDir = aiDirection;
@@ -2934,21 +2910,18 @@
                 return true;
             });
 
-            // Collect all valid moves
+            // Filter valid moves (not hitting wall, self, or player)
             let validMoves = [];
-
             for (let dir of possibleDirs) {
                 const newX = head.x + dir.x;
                 const newY = head.y + dir.y;
 
-                // Check if move is valid (not hitting wall)
-                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) {
-                    continue;
-                }
+                // Check bounds
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
 
-                // Check if hitting self
+                // Check self collision
                 let hitsSelf = false;
-                for (let i = 0; i < aiSnake.length; i++) {
+                for (let i = 0; i < aiSnake.length - 1; i++) { // 排除尾巴，因为会移动
                     if (aiSnake[i].x === newX && aiSnake[i].y === newY) {
                         hitsSelf = true;
                         break;
@@ -2956,7 +2929,7 @@
                 }
                 if (hitsSelf) continue;
 
-                // Check if hitting player snake
+                // Check player collision
                 let hitsPlayer = false;
                 for (let i = 0; i < snake.length; i++) {
                     if (snake[i].x === newX && snake[i].y === newY) {
@@ -2966,49 +2939,177 @@
                 }
                 if (hitsPlayer) continue;
 
-                // Calculate score for this direction
-                let score = 0;
-
-                // Distance to food (prefer closer)
-                const distToFood = Math.abs(newX - nearestFood.x) + Math.abs(newY - nearestFood.y);
-                score -= distToFood * 10;
-
-                // Bonus for moving toward food
-                if (distToFood < minDistance) {
-                    score += 50;
-                }
-
-                // Check if this move leads to food
-                if (newX === nearestFood.x && newY === nearestFood.y) {
-                    score += 200; // Big bonus for eating
-                }
-
-                // Prefer moves that don't trap us (unless AI is ignoring space)
-                if (!IGNORE_SPACE) {
-                    const spaceScore = countAccessibleSpaceAIVsYou(newX, newY, tileCount);
-                    score += spaceScore * 2;
-                }
-
-                validMoves.push({dir, score});
+                validMoves.push({dir, newX, newY});
             }
 
             if (validMoves.length === 0) return;
 
-            // Sort by score (best first)
-            validMoves.sort((a, b) => b.score - a.score);
+            // 评估所有食物，按综合评分排序
+            const evaluations = [];
+            for (let food of foods) {
+                const eval = evaluateFoodAIVsYou(head, food, tileCount);
+                if (eval) evaluations.push(eval);
+            }
+            evaluations.sort((a, b) => b.score - a.score);
 
+            // 尝试吃最安全且评分高的食物
+            for (let eval of evaluations) {
+                const next = eval.path[0];
+                const dirX = next.x - head.x;
+                const dirY = next.y - head.y;
+
+                // 检查该移动是否在有效移动列表中
+                const moveIndex = validMoves.findIndex(m => m.dir.x === dirX && m.dir.y === dirY);
+                if (moveIndex === -1) continue;
+
+                // 安全检查
+                if (!eval.isSafe) continue;
+
+                // 执行移动
+                if (!MAKE_MISTAKE) {
+                    aiDirection = {x: dirX, y: dirY};
+                    return;
+                }
+            }
+
+            // 没有安全食物或选择犯错时，使用评分系统选择移动
+            let scoredMoves = [];
+            for (let move of validMoves) {
+                let score = 0;
+
+                // 空间评估
+                const space = countAccessibleSpaceAIVsYou(move.newX, move.newY, tileCount);
+                score += space * 3;
+
+                // 如果评估了食物，使用最近的距离
+                if (evaluations.length > 0) {
+                    const nearestEval = evaluations[0];
+                    const distToFood = Math.abs(move.newX - nearestEval.food.x) + Math.abs(move.newY - nearestEval.food.y);
+                    score -= distToFood * 5;
+                }
+
+                // 避免墙壁
+                const wallDist = Math.min(move.newX, move.newY, tileCount - 1 - move.newX, tileCount - 1 - move.newY);
+                score += wallDist * 3;
+
+                scoredMoves.push({move, score});
+            }
+
+            scoredMoves.sort((a, b) => b.score - a.score);
+
+            // 选择移动
             let chosenMove;
-
-            if (MAKE_MISTAKE && validMoves.length > 1) {
-                // Make a mistake: pick a random move instead of the best one
-                const mistakeIndex = Math.floor(Math.random() * validMoves.length);
-                chosenMove = validMoves[mistakeIndex];
+            if (MAKE_MISTAKE && scoredMoves.length > 1) {
+                const mistakeIndex = Math.floor(Math.random() * Math.min(scoredMoves.length, 3));
+                chosenMove = scoredMoves[mistakeIndex].move;
             } else {
-                // Pick the best move
-                chosenMove = validMoves[0];
+                chosenMove = scoredMoves[0].move;
             }
 
             aiDirection = {x: chosenMove.dir.x, y: chosenMove.dir.y};
+        }
+
+        // 评估食物（AI vs YOU模式）
+        function evaluateFoodAIVsYou(head, food, tileCount) {
+            // 寻找路径
+            const path = findPathToFoodAIVsYou(head.x, head.y, food.x, food.y);
+            if (!path || path.length === 0) return null;
+
+            // 基础分值
+            let baseScore = 0;
+            if (food.points) {
+                baseScore += food.points * 10;
+            }
+
+            // 道具奖励
+            const POWERUP_BONUS = {
+                'slow': 15, 'extra': 20, 'line': 18,
+                'blizzard': 25, 'coconut': 30, 'cherrytree': 20
+            };
+            if (food.type && POWERUP_BONUS[food.type]) {
+                baseScore += POWERUP_BONUS[food.type] * 10;
+            }
+
+            // 路径长度惩罚
+            const pathLength = path.length;
+
+            // 风险评估
+            let risk = 0;
+            let isSafe = true;
+
+            // 检查吃完后的空间
+            const newHead = path[path.length - 1];
+            const space = countAccessibleSpaceAIVsYou(newHead.x, newHead.y, tileCount);
+            const minSpace = aiSnake.length * 1.5;
+
+            if (space < minSpace) {
+                risk += 50;
+                isSafe = false;
+            }
+
+            // 墙壁惩罚
+            const wallDist = Math.min(newHead.x, newHead.y, tileCount - 1 - newHead.x, tileCount - 1 - newHead.y);
+            if (wallDist === 0) risk += 10;
+
+            const score = (baseScore / Math.sqrt(pathLength + 1)) - risk;
+
+            return {food, score, path, risk, isSafe, pathLength};
+        }
+
+        // BFS寻找路径（AI vs YOU模式）
+        function findPathToFoodAIVsYou(startX, startY, targetX, targetY) {
+            const { tileCount } = getGameSettings();
+            const queue = [{x: startX, y: startY, path: []}];
+            const visited = new Set();
+            visited.add(`${startX},${startY}`);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.x === targetX && current.y === targetY) {
+                    return current.path;
+                }
+
+                const directions = [
+                    {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}
+                ];
+
+                for (let dir of directions) {
+                    const newX = current.x + dir.x;
+                    const newY = current.y + dir.y;
+                    const key = `${newX},${newY}`;
+
+                    if (visited.has(key)) continue;
+                    if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+
+                    // 检查碰撞（AI蛇自身和玩家蛇）
+                    let occupied = false;
+                    for (let i = 0; i < aiSnake.length - 1; i++) {
+                        if (aiSnake[i].x === newX && aiSnake[i].y === newY) {
+                            occupied = true;
+                            break;
+                        }
+                    }
+                    if (!occupied) {
+                        for (let i = 0; i < snake.length; i++) {
+                            if (snake[i].x === newX && snake[i].y === newY) {
+                                occupied = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (occupied) continue;
+
+                    visited.add(key);
+                    queue.push({
+                        x: newX, y: newY,
+                        path: [...current.path, {x: newX, y: newY}]
+                    });
+                }
+            }
+
+            return null;
         }
 
         // Count accessible space from a position in AI vs YOU mode
@@ -3065,36 +3166,23 @@
             return count;
         }
 
-        // AI pathfinding - find the best direction to reach food
+        // AI pathfinding - find the best direction to reach food (改进版)
         function makeAIDecision() {
             if (!gameRunning || !isAIMode) return;
 
             const head = snake[0];
             const { tileCount } = getGameSettings();
 
-            // Find nearest food
-            let nearestFood = null;
-            let minDistance = Infinity;
-
-            for (let food of foods) {
-                // Skip power-ups in simple AI mode, go for fruits only
-                if (food.isPowerUp) continue;
-
-                const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestFood = food;
+            // 1. 检查是否启用哈密尔顿保命模式
+            if (shouldUseHamiltonianMode()) {
+                const dir = makeHamiltonianMove();
+                if (dir) {
+                    direction = dir;
+                    return;
                 }
             }
 
-            // If no fruits found, try any food
-            if (!nearestFood && foods.length > 0) {
-                nearestFood = foods[0];
-            }
-
-            if (!nearestFood) return;
-
-            // Get possible directions (excluding reverse)
+            // 2. 获取所有安全移动
             const currentDir = direction;
             const possibleDirs = [
                 {x: 0, y: -1},    // up
@@ -3124,72 +3212,49 @@
 
             if (safeMoves.length === 0) {
                 // No safe moves, try any move that won't immediately kill (including tail)
-                for (let dir of possibleDirs) {
-                    const newX = head.x + dir.x;
-                    const newY = head.y + dir.y;
-
-                    if (isSafeMove(newX, newY, false)) {
-                        direction = {x: dir.x, y: dir.y};
-                        return;
-                    }
-                }
-                return; // No moves available
+                const fallbackDir = makeFallbackMove();
+                direction = fallbackDir;
+                return;
             }
 
-            // Try to find a safe path to food using BFS
-            const pathToFood = findPathToFood(head.x, head.y, nearestFood.x, nearestFood.y, true);
+            // 3. 评估所有食物，按综合评分排序
+            const evaluations = foods.map(f => evaluateFood(f)).filter(e => e !== null);
+            evaluations.sort((a, b) => b.score - a.score);
 
-            if (pathToFood && pathToFood.length > 0) {
-                const nextMove = pathToFood[0];
-                const dirX = nextMove.x - head.x;
-                const dirY = nextMove.y - head.y;
+            // 4. 尝试吃最安全且评分高的食物
+            for (let eval of evaluations) {
+                // 检查移动是否在安全移动列表中
+                const next = eval.path[0];
+                const dirX = next.x - head.x;
+                const dirY = next.y - head.y;
 
-                // Check if this move is safe (not in safeMoves list means it hits something)
                 const isMoveSafe = safeMoves.some(m => m.x === dirX && m.y === dirY);
+                if (!isMoveSafe) continue;
 
-                if (isMoveSafe) {
-                    // Check if the path is safe using more conservative criteria
-                    // Must be able to reach tail after eating, or have enough space
-                    if (canSafelyReachFood(pathToFood) || pathToFood.length === 1) {
-                        // Safe to move toward food
-                        direction = {x: dirX, y: dirY};
-                        return;
-                    }
-                }
+                // 安全检查
+                if (!eval.isSafe) continue;
+
+                // 前向检查
+                const forwardCheck = performForwardChecking(eval.path);
+                if (!forwardCheck.isSafe) continue;
+
+                // 时间窗口检查
+                if (isTimeTrap(eval.path, tileCount)) continue;
+
+                // 执行移动
+                direction = {x: dirX, y: dirY};
+                return;
             }
 
-            // No safe path to food, use follow-tail strategy or safest move
-            let bestMove = null;
-            let bestScore = -Infinity;
-
-            for (let move of safeMoves) {
-                let score = 0;
-
-                // Calculate accessible space from this position
-                const space = countAccessibleSpace(move.newX, move.newY, tileCount, false);
-                score += space * 3; // Prioritize open space
-
-                // Try to follow tail if possible (maintain longest path)
-                const tail = snake[snake.length - 1];
-                const distToTail = Math.abs(move.newX - tail.x) + Math.abs(move.newY - tail.y);
-                score += distToTail; // Prefer positions closer to tail (longer path)
-
-                // Avoid getting too close to walls
-                const wallDist = Math.min(move.newX, move.newY, tileCount - 1 - move.newX, tileCount - 1 - move.newY);
-                score += wallDist * 2;
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = move;
-                }
+            // 5. 没有安全食物，跟随尾巴
+            const tailMove = makeTailFollowingMove();
+            if (tailMove) {
+                direction = tailMove;
+                return;
             }
 
-            if (bestMove) {
-                direction = {x: bestMove.x, y: bestMove.y};
-            } else if (safeMoves.length > 0) {
-                // Fallback: choose the move with most space
-                direction = {x: safeMoves[0].x, y: safeMoves[0].y};
-            }
+            // 6. 最后的备用策略
+            direction = makeFallbackMove();
         }
 
         // Count accessible space from a position (flood fill)
@@ -3401,6 +3466,702 @@
             }
 
             return true;
+        }
+
+        // ==================== REGION: 哈密尔顿回路 ====================
+
+        const hamiltonianCycle = {
+            cycle: null,
+            tileCount: 0,
+
+            initialize(tileCount) {
+                this.tileCount = tileCount;
+                this.cycle = new Array(tileCount * tileCount);
+                this.generateSerpentineCycle();
+            },
+
+            // 生成蛇形哈密尔顿回路
+            generateSerpentineCycle() {
+                let index = 0;
+                for (let y = 0; y < this.tileCount; y++) {
+                    if (y % 2 === 0) {
+                        // 偶数行：从左到右
+                        for (let x = 0; x < this.tileCount; x++) {
+                            this.cycle[index] = { x, y, nextIndex: index + 1 };
+                            index++;
+                        }
+                    } else {
+                        // 奇数行：从右到左
+                        for (let x = this.tileCount - 1; x >= 0; x--) {
+                            this.cycle[index] = { x, y, nextIndex: index + 1 };
+                            index++;
+                        }
+                    }
+                }
+                // 最后一个节点连接回第一个
+                if (this.cycle.length > 0) {
+                    this.cycle[this.cycle.length - 1].nextIndex = 0;
+                }
+            },
+
+            // 获取位置在回路中的索引
+            getIndex(x, y) {
+                for (let i = 0; i < this.cycle.length; i++) {
+                    if (this.cycle[i].x === x && this.cycle[i].y === y) {
+                        return i;
+                    }
+                }
+                return -1;
+            },
+
+            // 获取下一个方向
+            getDirection(headX, headY) {
+                const currentIndex = this.getIndex(headX, headY);
+                if (currentIndex === -1) return null;
+
+                const nextIndex = this.cycle[currentIndex].nextIndex;
+                const nextPos = this.cycle[nextIndex];
+
+                return {
+                    x: nextPos.x - headX,
+                    y: nextPos.y - headY
+                };
+            },
+
+            // 计算沿回路的距离（从from到to）
+            getDistance(fromX, fromY, toX, toY) {
+                const fromIndex = this.getIndex(fromX, fromY);
+                const toIndex = this.getIndex(toX, toY);
+
+                if (fromIndex === -1 || toIndex === -1) return Infinity;
+
+                let distance = 0;
+                let current = fromIndex;
+                const totalCells = this.tileCount * this.tileCount;
+
+                while (current !== toIndex && distance < totalCells) {
+                    current = this.cycle[current].nextIndex;
+                    distance++;
+                }
+
+                return distance;
+            }
+        };
+
+        // 检查是否应该启用哈密尔顿保命模式
+        function shouldUseHamiltonianMode() {
+            const { tileCount } = getGameSettings();
+            const totalCells = tileCount * tileCount;
+            const snakeRatio = snake.length / totalCells;
+            // 当蛇身超过35%地图时启用
+            return snakeRatio >= 0.35;
+        }
+
+        // 执行哈密尔顿移动
+        function makeHamiltonianMove() {
+            const { tileCount } = getGameSettings();
+            const head = snake[0];
+
+            // 确保回路已初始化
+            if (hamiltonianCycle.tileCount !== tileCount) {
+                hamiltonianCycle.initialize(tileCount);
+            }
+
+            const dir = hamiltonianCycle.getDirection(head.x, head.y);
+            if (!dir) return null;
+
+            const newX = head.x + dir.x;
+            const newY = head.y + dir.y;
+
+            // 检查是否安全（在哈密尔顿回路中应该总是安全的）
+            if (isSafeMove(newX, newY, true)) {
+                return dir;
+            }
+
+            return null;
+        }
+
+        // ==================== REGION: 食物评估系统 ====================
+
+        const FOOD_EVALUATION = {
+            POINTS_WEIGHT: 10,
+            POWERUP_BONUS: {
+                'slow': 15,
+                'extra': 20,
+                'line': 18,
+                'blizzard': 25,
+                'coconut': 30,
+                'cherrytree': 20
+            },
+            RISK_FACTORS: {
+                MIN_SPACE_RATIO: 1.5,
+                WALL_PENALTY: 5,
+                CORNER_PENALTY: 10,
+                TRAP_PENALTY: 50
+            }
+        };
+
+        // 评估单个食物
+        function evaluateFood(food) {
+            const head = snake[0];
+            const { tileCount } = getGameSettings();
+
+            // 1. BFS寻找路径
+            const path = findPathToFood(head.x, head.y, food.x, food.y, true);
+            if (!path || path.length === 0) return null;
+
+            // 2. 计算基础分值
+            let baseScore = 0;
+
+            // 食物分值权重
+            if (food.points) {
+                baseScore += food.points * FOOD_EVALUATION.POINTS_WEIGHT;
+            }
+
+            // 道具类型奖励
+            if (food.type && FOOD_EVALUATION.POWERUP_BONUS[food.type]) {
+                baseScore += FOOD_EVALUATION.POWERUP_BONUS[food.type] * FOOD_EVALUATION.POINTS_WEIGHT;
+            }
+
+            // 3. 路径长度惩罚（距离越远，得分越低）
+            const pathLength = path.length;
+            const distancePenalty = Math.sqrt(pathLength) * 5;
+
+            // 4. 风险评估
+            let risk = 0;
+            let isSafe = true;
+
+            // 4.1 检查吃完后的空间
+            const newHead = path[path.length - 1];
+            const newSnakeLength = snake.length + 1;
+            const minSpace = newSnakeLength * FOOD_EVALUATION.RISK_FACTORS.MIN_SPACE_RATIO;
+
+            // 使用时间窗口空间计算
+            const accessibleSpace = countAccessibleSpaceWithTimeWindow(newHead.x, newHead.y, tileCount, path.length);
+
+            if (accessibleSpace < minSpace) {
+                risk += FOOD_EVALUATION.RISK_FACTORS.TRAP_PENALTY;
+                isSafe = false;
+            } else if (accessibleSpace < minSpace * 1.5) {
+                risk += FOOD_EVALUATION.RISK_FACTORS.CORNER_PENALTY;
+            }
+
+            // 4.2 墙壁惩罚
+            const wallDist = Math.min(newHead.x, newHead.y, tileCount - 1 - newHead.x, tileCount - 1 - newHead.y);
+            if (wallDist === 0) {
+                risk += FOOD_EVALUATION.RISK_FACTORS.WALL_PENALTY;
+            } else if (wallDist === 1) {
+                risk += FOOD_EVALUATION.RISK_FACTORS.WALL_PENALTY / 2;
+            }
+
+            // 4.3 角落惩罚
+            if (wallDist === 0 && (newHead.x <= 1 || newHead.x >= tileCount - 2) &&
+                (newHead.y <= 1 || newHead.y >= tileCount - 2)) {
+                risk += FOOD_EVALUATION.RISK_FACTORS.CORNER_PENALTY;
+            }
+
+            // 5. 综合评分 = 价值 / sqrt(路径长度) - 风险
+            const score = (baseScore / Math.sqrt(pathLength + 1)) - risk;
+
+            return {
+                food,
+                score,
+                path,
+                risk,
+                isSafe,
+                accessibleSpace,
+                pathLength
+            };
+        }
+
+        // ==================== REGION: 空间时间窗口管理 ====================
+
+        // 计算空间时间窗口 - 返回每个格子何时会空出来
+        function calculateSpaceTimeWindow(tileCount) {
+            const timeWindow = new Array(tileCount).fill(null).map(() => new Array(tileCount).fill(0));
+
+            // 蛇身第i段会在 (蛇长 - i) 步后空出
+            for (let i = 0; i < snake.length; i++) {
+                const segment = snake[i];
+                const freeTime = snake.length - i;
+                if (segment.x >= 0 && segment.x < tileCount && segment.y >= 0 && segment.y < tileCount) {
+                    timeWindow[segment.y][segment.x] = freeTime;
+                }
+            }
+
+            return timeWindow;
+        }
+
+        // 带时间窗口的洪水填充
+        function countAccessibleSpaceWithTimeWindow(startX, startY, tileCount, maxSteps = 50) {
+            const timeWindow = calculateSpaceTimeWindow(tileCount);
+            const visited = new Set();
+            const queue = [{ x: startX, y: startY, steps: 0 }];
+            visited.add(`${startX},${startY}`);
+            let count = 0;
+            const maxCount = 400;
+
+            while (queue.length > 0 && count < maxCount) {
+                const { x, y, steps } = queue.shift();
+                count++;
+
+                const neighbors = [
+                    { x: x + 1, y: y },
+                    { x: x - 1, y: y },
+                    { x: x, y: y + 1 },
+                    { x: x, y: y - 1 }
+                ];
+
+                for (let n of neighbors) {
+                    if (n.x < 0 || n.x >= tileCount || n.y < 0 || n.y >= tileCount) continue;
+
+                    const key = `${n.x},${n.y}`;
+                    if (visited.has(key)) continue;
+
+                    const newSteps = steps + 1;
+                    if (newSteps > maxSteps) continue;
+
+                    // 检查该位置在到达时是否已经空出来
+                    const freeTime = timeWindow[n.y][n.x];
+                    if (freeTime > newSteps) continue; // 到达时还没空出来
+
+                    visited.add(key);
+                    queue.push({ x: n.x, y: n.y, steps: newSteps });
+                }
+            }
+
+            return count;
+        }
+
+        // 检查路径是否会进入时间陷阱
+        function isTimeTrap(path, tileCount) {
+            if (!path || path.length < 2) return false;
+
+            const timeWindow = calculateSpaceTimeWindow(tileCount);
+            const lastPos = path[path.length - 1];
+
+            // 检查吃完食物后的逃生路径
+            const escapeDirs = [
+                { x: 0, y: -1 }, { x: 0, y: 1 },
+                { x: -1, y: 0 }, { x: 1, y: 0 }
+            ];
+
+            let hasEscape = false;
+            for (let dir of escapeDirs) {
+                const newX = lastPos.x + dir.x;
+                const newY = lastPos.y + dir.y;
+
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+
+                // 检查该方向在吃完后是否可用
+                const freeTime = timeWindow[newY][newX];
+                if (freeTime <= path.length + 1) {
+                    hasEscape = true;
+                    break;
+                }
+            }
+
+            return !hasEscape;
+        }
+
+        // ==================== REGION: 前向安全检查 ====================
+
+        const FORWARD_CHECKING = {
+            DEPTH: 3,
+            MIN_ESCAPE_PATHS: 2
+        };
+
+        // 执行深度前向检查
+        function performForwardChecking(path) {
+            if (!path || path.length === 0) {
+                return { isSafe: false, escapePaths: 0 };
+            }
+
+            const { tileCount } = getGameSettings();
+            const foodPos = path[path.length - 1];
+
+            // 模拟吃完食物后的蛇状态
+            const simulatedSnake = [
+                { x: foodPos.x, y: foodPos.y },
+                ...snake.map(s => ({ ...s }))
+            ];
+
+            // 深度检查
+            let currentHead = { x: foodPos.x, y: foodPos.y };
+
+            for (let depth = 1; depth <= FORWARD_CHECKING.DEPTH; depth++) {
+                // 模拟蛇身移动（尾巴后退，头部在currentHead）
+                const simulatedSnakeAtDepth = simulatedSnake.slice(0, simulatedSnake.length - depth);
+                simulatedSnakeAtDepth[0] = { ...currentHead };
+
+                // 计算从当前位置的逃生路径数
+                const escapePaths = countEscapePathsAtDepth(currentHead, tileCount, simulatedSnakeAtDepth, depth);
+
+                if (escapePaths < FORWARD_CHECKING.MIN_ESCAPE_PATHS) {
+                    return { isSafe: false, escapePaths };
+                }
+
+                // 尝试移动到最佳相邻位置进行下一轮检查
+                const nextPos = findBestAdjacentPosition(currentHead, tileCount, simulatedSnakeAtDepth, depth);
+                if (!nextPos) {
+                    return { isSafe: false, escapePaths: 0 };
+                }
+                currentHead = nextPos;
+            }
+
+            return { isSafe: true, escapePaths: FORWARD_CHECKING.MIN_ESCAPE_PATHS };
+        }
+
+        // 在指定深度计算逃生路径数
+        function countEscapePathsAtDepth(head, tileCount, simulatedSnake, depth) {
+            const directions = [
+                { x: 0, y: -1 }, { x: 0, y: 1 },
+                { x: -1, y: 0 }, { x: 1, y: 0 }
+            ];
+
+            let escapePaths = 0;
+            const obstacleSet = new Set();
+
+            // 构建障碍物集合
+            for (let segment of simulatedSnake) {
+                obstacleSet.add(`${segment.x},${segment.y}`);
+            }
+
+            for (let dir of directions) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+                if (obstacleSet.has(`${newX},${newY}`)) continue;
+
+                // 检查从该位置能否到达尾巴
+                const canReachTail = canReachTailFromPosition(newX, newY, simulatedSnake, tileCount);
+                if (canReachTail) {
+                    escapePaths++;
+                }
+            }
+
+            return escapePaths;
+        }
+
+        // 从指定位置能否到达尾巴
+        function canReachTailFromPosition(startX, startY, simulatedSnake, tileCount) {
+            const tail = simulatedSnake[simulatedSnake.length - 1];
+            if (!tail) return false;
+
+            const queue = [{ x: startX, y: startY }];
+            const visited = new Set();
+            visited.add(`${startX},${startY}`);
+
+            const obstacleSet = new Set();
+            for (let segment of simulatedSnake) {
+                obstacleSet.add(`${segment.x},${segment.y}`);
+            }
+            // 起点和尾巴不作为障碍物
+            obstacleSet.delete(`${startX},${startY}`);
+            obstacleSet.delete(`${tail.x},${tail.y}`);
+
+            while (queue.length > 0) {
+                const { x, y } = queue.shift();
+
+                if (x === tail.x && y === tail.y) {
+                    return true;
+                }
+
+                const directions = [
+                    { x: 0, y: -1 }, { x: 0, y: 1 },
+                    { x: -1, y: 0 }, { x: 1, y: 0 }
+                ];
+
+                for (let dir of directions) {
+                    const newX = x + dir.x;
+                    const newY = y + dir.y;
+                    const key = `${newX},${newY}`;
+
+                    if (visited.has(key)) continue;
+                    if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+                    if (obstacleSet.has(key)) continue;
+
+                    visited.add(key);
+                    queue.push({ x: newX, y: newY });
+                }
+            }
+
+            return false;
+        }
+
+        // 寻找最佳相邻位置
+        function findBestAdjacentPosition(head, tileCount, simulatedSnake, depth) {
+            const directions = [
+                { x: 0, y: -1, name: 'up' },
+                { x: 0, y: 1, name: 'down' },
+                { x: -1, y: 0, name: 'left' },
+                { x: 1, y: 0, name: 'right' }
+            ];
+
+            let bestPos = null;
+            let bestScore = -Infinity;
+            const obstacleSet = new Set();
+
+            for (let segment of simulatedSnake) {
+                obstacleSet.add(`${segment.x},${segment.y}`);
+            }
+
+            for (let dir of directions) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                if (newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount) continue;
+                if (obstacleSet.has(`${newX},${newY}`)) continue;
+
+                // 评分：优先选择空间大、离尾巴近的位置
+                let score = 0;
+
+                // 可访问空间
+                const space = countAccessibleSpaceSimulated(newX, newY, tileCount, simulatedSnake);
+                score += space;
+
+                // 离尾巴的距离（越近越好，保证有退路）
+                const tail = simulatedSnake[simulatedSnake.length - 1];
+                if (tail) {
+                    const distToTail = Math.abs(newX - tail.x) + Math.abs(newY - tail.y);
+                    score -= distToTail * 2;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPos = { x: newX, y: newY };
+                }
+            }
+
+            return bestPos;
+        }
+
+        // 模拟状态下的可访问空间计算
+        function countAccessibleSpaceSimulated(startX, startY, tileCount, simulatedSnake) {
+            const visited = new Set();
+            const queue = [{ x: startX, y: startY }];
+            visited.add(`${startX},${startY}`);
+            let count = 0;
+            const maxCount = 200;
+
+            const obstacleSet = new Set();
+            for (let segment of simulatedSnake) {
+                obstacleSet.add(`${segment.x},${segment.y}`);
+            }
+
+            while (queue.length > 0 && count < maxCount) {
+                const { x, y } = queue.shift();
+                count++;
+
+                const neighbors = [
+                    { x: x + 1, y: y },
+                    { x: x - 1, y: y },
+                    { x: x, y: y + 1 },
+                    { x: x, y: y - 1 }
+                ];
+
+                for (let n of neighbors) {
+                    if (n.x < 0 || n.x >= tileCount || n.y < 0 || n.y >= tileCount) continue;
+
+                    const key = `${n.x},${n.y}`;
+                    if (visited.has(key)) continue;
+                    if (obstacleSet.has(key)) continue;
+
+                    visited.add(key);
+                    queue.push(n);
+                }
+            }
+
+            return count;
+        }
+
+        // ==================== REGION: 跟随尾巴策略 ====================
+
+        // 改进的跟随尾巴策略
+        function makeTailFollowingMove() {
+            const head = snake[0];
+            const { tileCount } = getGameSettings();
+
+            // 获取所有安全移动
+            const currentDir = direction;
+            const directions = [
+                { x: 0, y: -1 },
+                { x: 0, y: 1 },
+                { x: -1, y: 0 },
+                { x: 1, y: 0 }
+            ].filter(dir => {
+                if (currentDir.x !== 0 || currentDir.y !== 0) {
+                    if (dir.x === -currentDir.x && dir.y === -currentDir.y) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            let validMoves = [];
+
+            for (let dir of directions) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                if (isSafeMove(newX, newY, true)) {
+                    validMoves.push({ x: dir.x, y: dir.y, newX, newY });
+                }
+            }
+
+            if (validMoves.length === 0) return null;
+
+            let bestMove = null;
+            let bestScore = -Infinity;
+
+            for (let move of validMoves) {
+                let score = 0;
+
+                // 计算带时间窗口的可访问空间
+                const space = countAccessibleSpaceWithTimeWindow(move.newX, move.newY, tileCount, 30);
+                score += space * 3;
+
+                // 寻找通往尾巴的路径
+                const pathToTail = findPathToTailImproved(move.newX, move.newY);
+                if (pathToTail) {
+                    score += 100; // 能找到路径的奖励
+                    // 路径越长越好（最大化移动空间）
+                    score += pathToTail.length * 2;
+                } else {
+                    score -= 50; // 找不到路径的惩罚
+                }
+
+                // 墙壁距离惩罚
+                const wallDist = Math.min(move.newX, move.newY, tileCount - 1 - move.newX, tileCount - 1 - move.newY);
+                score += wallDist * 5;
+
+                // 避免角落
+                if (wallDist === 0 && (move.newX <= 1 || move.newX >= tileCount - 2) &&
+                    (move.newY <= 1 || move.newY >= tileCount - 2)) {
+                    score -= 30;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+
+            if (bestMove) {
+                return { x: bestMove.x, y: bestMove.y };
+            }
+
+            return null;
+        }
+
+        // 寻找通往尾巴的改进路径（尝试找到最长安全路径）
+        function findPathToTailImproved(startX, startY) {
+            const tail = snake[snake.length - 1];
+
+            // 先找最短路径
+            const shortestPath = findPathToFood(startX, startY, tail.x, tail.y, true);
+            if (!shortestPath) return null;
+
+            // 基于最短路径，尝试找到更长的绕行路径
+            // 这通过寻找相邻的空闲格子来延长路径
+            const extendedPath = findExtendedPath(startX, startY, tail.x, tail.y, shortestPath);
+
+            return extendedPath || shortestPath;
+        }
+
+        // 尝试延长路径
+        function findExtendedPath(startX, startY, targetX, targetY, basePath) {
+            const { tileCount } = getGameSettings();
+
+            if (basePath.length < 2) return basePath;
+
+            // 尝试在路径中插入绕行点
+            // 对于路径中的每个转折点，看看是否可以绕远路
+            let extendedPath = [...basePath];
+
+            for (let i = 0; i < extendedPath.length - 1; i++) {
+                const current = i === 0 ? { x: startX, y: startY } : extendedPath[i - 1];
+                const next = extendedPath[i];
+
+                // 检查是否可以绕行
+                const detour = findDetour(current, next, tileCount);
+                if (detour && detour.length > 0) {
+                    // 插入绕行点
+                    extendedPath.splice(i, 0, ...detour);
+                    i += detour.length;
+                }
+            }
+
+            return extendedPath;
+        }
+
+        // 寻找两点之间的绕行
+        function findDetour(from, to, tileCount) {
+            // 如果两点相邻，尝试找一个绕行点
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+
+            // 可能的绕行方向
+            const detourDirs = [];
+
+            if (dx !== 0) {
+                // 水平移动，尝试上下绕行
+                detourDirs.push({ x: from.x, y: from.y - 1 });
+                detourDirs.push({ x: from.x, y: from.y + 1 });
+                detourDirs.push({ x: to.x, y: to.y - 1 });
+                detourDirs.push({ x: to.x, y: to.y + 1 });
+            } else if (dy !== 0) {
+                // 垂直移动，尝试左右绕行
+                detourDirs.push({ x: from.x - 1, y: from.y });
+                detourDirs.push({ x: from.x + 1, y: from.y });
+                detourDirs.push({ x: to.x - 1, y: to.y });
+                detourDirs.push({ x: to.x + 1, y: to.y });
+            }
+
+            for (let detour of detourDirs) {
+                if (detour.x < 0 || detour.x >= tileCount || detour.y < 0 || detour.y >= tileCount) continue;
+                if (!isSafeMove(detour.x, detour.y, true)) continue;
+
+                // 检查从绕行点能否到达目标
+                const pathFromDetour = findPathToFood(detour.x, detour.y, to.x, to.y, true);
+                if (pathFromDetour) {
+                    return [detour];
+                }
+            }
+
+            return null;
+        }
+
+        // 备用策略
+        function makeFallbackMove() {
+            const head = snake[0];
+            const currentDir = direction;
+
+            const directions = [
+                { x: 0, y: -1 },
+                { x: 0, y: 1 },
+                { x: -1, y: 0 },
+                { x: 1, y: 0 }
+            ].filter(dir => {
+                if (currentDir.x !== 0 || currentDir.y !== 0) {
+                    if (dir.x === -currentDir.x && dir.y === -currentDir.y) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            for (let dir of directions) {
+                const newX = head.x + dir.x;
+                const newY = head.y + dir.y;
+
+                if (isSafeMove(newX, newY, false)) {
+                    return { x: dir.x, y: dir.y };
+                }
+            }
+
+            return currentDir;
         }
 
         // Firework types
