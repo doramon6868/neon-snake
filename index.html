@@ -3217,10 +3217,9 @@
                 return;
             }
 
-            // ===== 小蛇简化策略（少于8节） =====
-            // 小蛇时更激进地吃食物，不做复杂的保守检查
+            // ===== 小蛇简化策略（少于8节）=====
             if (snake.length < 8) {
-                // 找最近的食物
+                // 1. 尝试用BFS找路径
                 let nearestFood = null;
                 let nearestPath = null;
                 let minDist = Infinity;
@@ -3247,39 +3246,57 @@
                     }
                 }
 
-                // 找不到路径时，选择离食物最近的移动
+                // 2. BFS失败时，使用曼哈顿距离贪心策略
                 if (foods.length > 0) {
-                    let bestMove = null;
-                    let bestDist = Infinity;
-
-                    for (let move of safeMoves) {
-                        for (let food of foods) {
-                            const dist = Math.abs(move.newX - food.x) + Math.abs(move.newY - food.y);
-                            if (dist < bestDist) {
-                                bestDist = dist;
-                                bestMove = move;
-                            }
+                    // 找最近的食物
+                    let targetFood = foods[0];
+                    let minFoodDist = Infinity;
+                    for (let food of foods) {
+                        const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
+                        if (dist < minFoodDist) {
+                            minFoodDist = dist;
+                            targetFood = food;
                         }
                     }
 
-                    if (bestMove) {
+                    // 选择能缩短距离的方向
+                    let bestMove = null;
+                    let bestDist = minFoodDist;
+
+                    for (let move of safeMoves) {
+                        const newDist = Math.abs(move.newX - targetFood.x) + Math.abs(move.newY - targetFood.y);
+
+                        // 优先选择能缩短距离的方向
+                        if (newDist < bestDist) {
+                            bestDist = newDist;
+                            bestMove = move;
+                        }
+                    }
+
+                    // 如果能缩短距离，执行移动
+                    if (bestMove && bestDist < minFoodDist) {
                         direction = {x: bestMove.x, y: bestMove.y};
                         return;
                     }
-                }
 
-                // 最后选择空间最大的移动
-                let bestMove = safeMoves[0];
-                let bestSpace = 0;
-                for (let move of safeMoves) {
-                    const space = countAccessibleSpace(move.newX, move.newY, tileCount, true);
-                    if (space > bestSpace) {
-                        bestSpace = space;
-                        bestMove = move;
+                    // 3. 循环检测：如果无法缩短距离，尝试任何安全移动
+                    // 避免死循环：随机打乱safeMoves顺序
+                    const shuffledMoves = safeMoves.sort(() => Math.random() - 0.5);
+                    for (let move of shuffledMoves) {
+                        // 检查这个移动是否会让我们离墙壁更近（避免困在角落）
+                        const wallDist = Math.min(move.newX, move.newY, tileCount - 1 - move.newX, tileCount - 1 - move.newY);
+                        if (wallDist >= 1) {
+                            direction = {x: move.x, y: move.y};
+                            return;
+                        }
+                    }
+
+                    // 4. 最后的选择：任何安全移动
+                    if (safeMoves.length > 0) {
+                        direction = {x: safeMoves[0].x, y: safeMoves[0].y};
+                        return;
                     }
                 }
-                direction = {x: bestMove.x, y: bestMove.y};
-                return;
             }
 
             // ===== 中等蛇策略（8-30节） =====
@@ -3364,11 +3381,15 @@
         // 辅助函数：使用 BFS 寻找通往食物的路径
         function findPathToFood(startX, startY, targetX, targetY, excludeTail = false) {
             const { tileCount } = getGameSettings();
+
+            // 小蛇时不排除尾巴，确保安全性
+            const actuallyExcludeTail = snake.length >= 5 ? excludeTail : false;
+
             const queue = [{x: startX, y: startY, path: []}];
             const visited = new Set();
             visited.add(`${startX},${startY}`);
 
-            const tailIndex = excludeTail ? snake.length - 1 : -1;
+            const tailIndex = actuallyExcludeTail ? snake.length - 1 : -1;
 
             while (queue.length > 0) {
                 const current = queue.shift();
@@ -3517,6 +3538,17 @@
             // Check collision with snake body
             for (let i = 0; i < snake.length; i++) {
                 if (i === tailIndex) continue;
+
+                // 小蛇特殊处理：当蛇少于5节时，第二节（颈部）永远视为障碍物
+                // 防止头部回退撞到自己的身体
+                if (snake.length < 5 && i === 1) {
+                    // 颈部必须严格检查，不能被排除
+                    if (snake[i].x === newX && snake[i].y === newY) {
+                        return false;
+                    }
+                    continue;
+                }
+
                 if (snake[i].x === newX && snake[i].y === newY) {
                     return false;
                 }
