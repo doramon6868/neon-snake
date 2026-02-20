@@ -476,28 +476,144 @@
             line-height: 1.4;
         }
 
+        /* Mobile direction controls */
+        .direction-controls {
+            display: none;
+            margin-top: 1.5rem;
+            touch-action: none;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .d-btn {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #C7CEEA;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #6B5B73;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .d-btn:active, .d-btn.active {
+            background: #FF9AA2;
+            border-color: #FF9AA2;
+            color: #fff;
+            transform: scale(0.95);
+        }
+
+        .d-btn-up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .d-btn-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .d-btn-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .d-btn-down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        #gameCanvas {
+            touch-action: none;
+        }
+
         @media (max-width: 768px) {
             .game-title {
-                font-size: 2.5rem;
+                font-size: 2rem;
+                margin-bottom: 0.5rem;
             }
             .game-stats {
-                gap: 1rem;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
             }
             .stat-box {
-                padding: 0.8rem 1.5rem;
+                padding: 0.5rem 1rem;
+                min-width: 80px;
+            }
+            .stat-label {
+                font-size: 0.65rem;
             }
             .stat-value {
-                font-size: 1.5rem;
+                font-size: 1.2rem;
             }
             .menu-title {
-                font-size: 2.5rem;
+                font-size: 2rem;
+            }
+            .menu-subtitle {
+                font-size: 1rem;
+                margin-bottom: 1.5rem;
             }
             .mode-btn {
-                width: 240px;
-                height: 240px;
+                width: 140px;
+                height: 140px;
+            }
+            .mode-icon {
+                font-size: 2.5rem;
+            }
+            .mode-name {
+                font-size: 1rem;
+            }
+            .mode-desc {
+                font-size: 0.75rem;
             }
             .menu-buttons {
-                gap: 1rem;
+                gap: 0.75rem;
+            }
+            .game-container {
+                margin: 0.5rem auto;
+                padding: 0 0.5rem;
+            }
+            .direction-controls {
+                display: block;
+            }
+            .game-controls p {
+                font-size: 0.7rem;
+            }
+            .go-menu-btn {
+                top: 10px;
+                left: 10px;
+                padding: 0.5rem 1rem;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .game-title {
+                font-size: 1.5rem;
+            }
+            .d-pad {
+                width: 180px;
+                height: 180px;
+            }
+            .d-btn {
+                width: 54px;
+                height: 54px;
+                font-size: 1.3rem;
             }
         }
     </style>
@@ -525,8 +641,17 @@
 
         <canvas id="gameCanvas"></canvas>
 
+        <div class="direction-controls" id="directionControls">
+            <div class="d-pad">
+                <button class="d-btn d-btn-up" data-direction="up" aria-label="Up">▲</button>
+                <button class="d-btn d-btn-left" data-direction="left" aria-label="Left">◀</button>
+                <button class="d-btn d-btn-right" data-direction="right" aria-label="Right">▶</button>
+                <button class="d-btn d-btn-down" data-direction="down" aria-label="Down">▼</button>
+            </div>
+        </div>
+
         <div class="game-controls">
-            <p>Use Arrow Keys or WASD to control</p>
+            <p>Use Arrow Keys/WASD or Swipe/Buttons to control</p>
         </div>
     </div>
 
@@ -3421,7 +3546,7 @@
 
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
-        });
+        }, { passive: false });
 
         canvas.addEventListener('touchend', (e) => {
             // Disable touch controls in AI mode
@@ -3448,7 +3573,82 @@
                     direction = {x: 0, y: -1};
                 }
             }
+        }, { passive: false });
+
+        // Direction button controls for mobile
+        const dPadButtons = document.querySelectorAll('.d-btn');
+
+        function handleDirectionButton(direction) {
+            // Disable controls in AI mode
+            if (isAIMode) return;
+
+            switch(direction) {
+                case 'up':
+                    if (direction.y === 0) {
+                        direction = {x: 0, y: -1};
+                    }
+                    break;
+                case 'down':
+                    if (direction.y === 0) {
+                        direction = {x: 0, y: 1};
+                    }
+                    break;
+                case 'left':
+                    if (direction.x === 0) {
+                        direction = {x: -1, y: 0};
+                    }
+                    break;
+                case 'right':
+                    if (direction.x === 0) {
+                        direction = {x: 1, y: 0};
+                    }
+                    break;
+            }
+        }
+
+        dPadButtons.forEach(btn => {
+            // Touch events for mobile
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                btn.classList.add('active');
+                const dir = btn.getAttribute('data-direction');
+                handleDirectionButton(dir);
+            }, { passive: false });
+
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btn.classList.remove('active');
+            }, { passive: false });
+
+            btn.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                btn.classList.remove('active');
+            }, { passive: false });
+
+            // Mouse events for desktop testing
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                btn.classList.add('active');
+                const dir = btn.getAttribute('data-direction');
+                handleDirectionButton(dir);
+            });
+
+            btn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                btn.classList.remove('active');
+            });
+
+            btn.addEventListener('mouseleave', (e) => {
+                btn.classList.remove('active');
+            });
         });
+
+        // Prevent default touch behaviors on game canvas and controls
+        document.addEventListener('touchmove', (e) => {
+            if (e.target.closest('#gameCanvas') || e.target.closest('.d-pad')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // END REGION: UI 控制
 
