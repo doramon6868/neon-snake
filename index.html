@@ -825,6 +825,24 @@
             border: '#003D7A'     // Dark blue border
         };
 
+        // 蛇头 Emoji 配置
+        const SNAKE_EMOJIS = {
+            player: {
+                up: '😮',      // 吃豆人风格 - 张嘴向上
+                down: '😮',    // 吃豆人风格 - 张嘴向下
+                left: '😮',    // 吃豆人风格 - 张嘴向左
+                right: '😮',   // 吃豆人风格 - 张嘴向右
+                default: '😮'
+            },
+            ai: {
+                up: '🤖',      // 机器人向上
+                down: '🤖',    // 机器人向下
+                left: '🤖',    // 机器人向左
+                right: '🤖',   // 机器人向右
+                default: '🤖'
+            }
+        };
+
         // Menu fruit animation interval
         let menuFruitInterval = null;
 
@@ -1201,6 +1219,25 @@
             return validPosition ? newItem : generateSingleFood(); // Recursive if invalid position
         }
 
+        // 根据方向获取蛇头 emoji
+        function getSnakeHeadEmoji(isAI, dir) {
+            const emojiSet = isAI ? SNAKE_EMOJIS.ai : SNAKE_EMOJIS.player;
+            if (dir.x === 0 && dir.y === -1) return emojiSet.up;
+            if (dir.x === 0 && dir.y === 1) return emojiSet.down;
+            if (dir.x === -1 && dir.y === 0) return emojiSet.left;
+            if (dir.x === 1 && dir.y === 0) return emojiSet.right;
+            return emojiSet.default;
+        }
+
+        // 计算 emoji 旋转角度（根据方向）
+        function getEmojiRotation(dir) {
+            if (dir.x === 0 && dir.y === -1) return 0;      // 上
+            if (dir.x === 0 && dir.y === 1) return 180;     // 下
+            if (dir.x === -1 && dir.y === 0) return -90;    // 左
+            if (dir.x === 1 && dir.y === 0) return 90;      // 右
+            return 0;
+        }
+
         function draw() {
             const { gridSize, tileCount } = getGameSettings();
 
@@ -1247,27 +1284,54 @@
                 if (isAIMode) {
                     // AI snake - all blue color scheme
                     if (index === 0) {
-                        ctx.fillStyle = AI_COLORS.head;
+                        // AI 蛇头 - 使用机器人 Emoji
+                        const headEmoji = getSnakeHeadEmoji(true, aiDirection);
+                        const rotation = getEmojiRotation(aiDirection);
+
+                        ctx.save();
+                        ctx.translate(segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                        ctx.rotate(rotation * Math.PI / 180);
+                        ctx.font = `${gridSize * 1.2}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(headEmoji, 0, 0);
+                        ctx.restore();
                     } else {
+                        // AI 蛇身
                         ctx.fillStyle = AI_COLORS.body[index % AI_COLORS.body.length];
+                        ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                        // Subtle border
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
                     }
                 } else {
-                    // Player snake - 蛇头 - 草莓粉
+                    // Player snake
                     if (index === 0) {
-                        ctx.fillStyle = '#FF9AA2';
+                        // 蛇头 - 使用 Emoji
+                        const headEmoji = getSnakeHeadEmoji(false, direction);
+                        const rotation = getEmojiRotation(direction);
+
+                        ctx.save();
+                        ctx.translate(segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                        ctx.rotate(rotation * Math.PI / 180);
+                        ctx.font = `${gridSize * 1.2}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(headEmoji, 0, 0);
+                        ctx.restore();
                     } else {
                         // 蛇身 - 马卡龙色系，每段不同颜色
                         ctx.fillStyle = macaronColors[index % macaronColors.length];
+                        ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                        // Subtle border
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
                     }
                 }
-
-                // 绘制蛇身方块
-                ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
-
-                // Subtle border
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
                 // Add fruit if present - emoji on background
                 if (segment.fruit && segment.fruit.emoji) {
@@ -1288,18 +1352,28 @@
             if (isAIVsYouMode) {
                 aiSnake.forEach((segment, index) => {
                     if (index === 0) {
-                        ctx.fillStyle = AI_COLORS.head;
+                        // AI 蛇头 - 使用机器人 Emoji
+                        const headEmoji = getSnakeHeadEmoji(true, aiDirection);
+                        const rotation = getEmojiRotation(aiDirection);
+
+                        ctx.save();
+                        ctx.translate(segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                        ctx.rotate(rotation * Math.PI / 180);
+                        ctx.font = `${gridSize * 1.2}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(headEmoji, 0, 0);
+                        ctx.restore();
                     } else {
+                        // AI 蛇身
                         ctx.fillStyle = AI_COLORS.body[index % AI_COLORS.body.length];
+                        ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
+
+                        // Subtle border
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
                     }
-
-                    // 绘制AI蛇身方块
-                    ctx.fillRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
-
-                    // Subtle border
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
                     // Add fruit if present - emoji on background
                     if (segment.fruit && segment.fruit.emoji) {
@@ -2399,6 +2473,9 @@
             document.querySelector('.game-container').style.display = 'block';
             document.getElementById('goMenuBtn').style.display = 'block';
 
+            // Show direction controls for player modes
+            document.getElementById('directionControls').style.display = 'block';
+
             // Clear AI interval if switching from AI mode
             if (aiDecisionInterval) {
                 clearInterval(aiDecisionInterval);
@@ -2417,6 +2494,9 @@
             document.getElementById('menuOverlay').style.display = 'none';
             document.querySelector('.game-container').style.display = 'block';
             document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Show direction controls for player modes
+            document.getElementById('directionControls').style.display = 'block';
 
             // Clear AI interval if switching from AI mode
             if (aiDecisionInterval) {
@@ -2453,6 +2533,9 @@
             // Hide Go to Menu button
             document.getElementById('goMenuBtn').style.display = 'none';
 
+            // Show direction controls by default (for menu state)
+            document.getElementById('directionControls').style.display = 'block';
+
             // Reset game over overlay title
             const overlayContent = gameOverlay.querySelector('.overlay-content');
             if (overlayContent) {
@@ -2485,6 +2568,9 @@
             document.getElementById('menuOverlay').style.display = 'none';
             document.querySelector('.game-container').style.display = 'block';
             document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Hide direction controls in AI mode (AI controls automatically)
+            document.getElementById('directionControls').style.display = 'none';
 
             // Hide level display in AI mode
             const levelElement = document.getElementById('level');
@@ -2528,6 +2614,9 @@
             document.getElementById('menuOverlay').style.display = 'none';
             document.querySelector('.game-container').style.display = 'block';
             document.getElementById('goMenuBtn').style.display = 'block';
+
+            // Show direction controls for player
+            document.getElementById('directionControls').style.display = 'block';
 
             // Update level display to show "VS"
             const levelElement = document.getElementById('level');
