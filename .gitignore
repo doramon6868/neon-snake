@@ -1,0 +1,42 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+.temp/
+tmp/
+
+# Local development tools
+.claude/
+.playwright-mcp/
+
+# Test generated files
+*_test.png
+*_test.jpg
+*_test.jpeg
+screenshots/
+
+# Misc
+.directory
+*.lnk
