@@ -112,6 +112,24 @@
             text-shadow: 0 0 10px rgba(255, 154, 162, 0.3);
         }
 
+        /* AI 得分框特殊样式 */
+        .ai-score-box .stat-value {
+            color: #6BB6FF;  /* 浅蓝色 */
+            text-shadow: 0 0 10px rgba(107, 182, 255, 0.3);
+        }
+
+        /* 玩家得分框特殊样式 */
+        .player-score-box .stat-value {
+            color: #FF9AA2;  /* 草莓粉 */
+            text-shadow: 0 0 10px rgba(255, 154, 162, 0.3);
+        }
+
+        /* VS 标识样式 */
+        .vs-box .stat-value {
+            color: #C7CEEA;  /* 淡薰衣草色 */
+            font-size: 1.5rem;
+        }
+
         #gameCanvas {
             border: 3px solid #C7CEEA; /* 淡薰衣草色 */
             border-radius: 12px;
@@ -624,16 +642,24 @@
     <div class="game-container">
         <h1 class="game-title">Neon Snake</h1>
 
-        <div class="game-stats">
-            <div class="stat-box">
-                <div class="stat-label">Score</div>
+        <div class="game-stats" id="gameStats">
+            <!-- 玩家得分 -->
+            <div class="stat-box player-score-box">
+                <div class="stat-label" id="playerLabel">Score</div>
                 <div class="stat-value" id="score">0</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-label">Level</div>
+            <!-- VS 标识 / 等级 -->
+            <div class="stat-box vs-box" id="vsBox">
+                <div class="stat-label" id="levelLabel">Level</div>
                 <div class="stat-value" id="level">1</div>
             </div>
-            <div class="stat-box">
+            <!-- AI 得分（仅在 AI vs YOU 模式下显示） -->
+            <div class="stat-box ai-score-box" id="aiScoreBox" style="display: none;">
+                <div class="stat-label">AI</div>
+                <div class="stat-value" id="aiScore" style="color: #6BB6FF;">0</div>
+            </div>
+            <!-- 最高分 -->
+            <div class="stat-box high-score-box" id="highScoreBox">
                 <div class="stat-label">High Score</div>
                 <div class="stat-value" id="highScore">0</div>
             </div>
@@ -791,6 +817,7 @@
         let direction = {x: 0, y: 0};
         let foods = []; // Multiple foods array
         let score = 0;
+        let aiScore = 0;  // AI 得分（用于 AI vs YOU 模式）
         let level = 1; // Current level
         let highScore = localStorage.getItem('snakeHighScore') || 0;
         let gameRunning = true;
@@ -1925,6 +1952,21 @@
             checkLevelUp();
         }
 
+        function updateAIScore() {
+            const aiScoreElement = document.getElementById('aiScore');
+            if (aiScoreElement) {
+                aiScoreElement.textContent = aiScore;
+
+                // 动画效果：分数更新时放大并改变颜色（AI使用蓝色主题）
+                aiScoreElement.style.transform = 'scale(1.2)';
+                aiScoreElement.style.color = '#4A90E2';  // AI深蓝色
+                setTimeout(() => {
+                    aiScoreElement.style.transform = 'scale(1)';
+                    aiScoreElement.style.color = '#6BB6FF';  // 恢复浅蓝色
+                }, 200);
+            }
+        }
+
         function gameOver() {
             gameRunning = false;
             isGameRunning = false;
@@ -2482,6 +2524,20 @@
                 aiDecisionInterval = null;
             }
 
+            // 隐藏 AI 得分框并重置统计栏标签
+            const aiScoreBox = document.getElementById('aiScoreBox');
+            if (aiScoreBox) {
+                aiScoreBox.style.display = 'none';
+            }
+            const playerLabel = document.getElementById('playerLabel');
+            if (playerLabel) {
+                playerLabel.textContent = 'Score';
+            }
+            const levelLabel = document.getElementById('levelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = 'Level';
+            }
+
             restartGame();
         }
 
@@ -2502,6 +2558,20 @@
             if (aiDecisionInterval) {
                 clearInterval(aiDecisionInterval);
                 aiDecisionInterval = null;
+            }
+
+            // 隐藏 AI 得分框并重置统计栏标签
+            const aiScoreBox = document.getElementById('aiScoreBox');
+            if (aiScoreBox) {
+                aiScoreBox.style.display = 'none';
+            }
+            const playerLabel = document.getElementById('playerLabel');
+            if (playerLabel) {
+                playerLabel.textContent = 'Score';
+            }
+            const levelLabel = document.getElementById('levelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = 'Level';
             }
 
             // 重置等级
@@ -2532,6 +2602,23 @@
 
             // Hide Go to Menu button
             document.getElementById('goMenuBtn').style.display = 'none';
+
+            // 重置 AI 分数
+            aiScore = 0;
+
+            // 隐藏 AI 得分框并重置统计栏
+            const aiScoreBox = document.getElementById('aiScoreBox');
+            if (aiScoreBox) {
+                aiScoreBox.style.display = 'none';
+            }
+            const playerLabel = document.getElementById('playerLabel');
+            if (playerLabel) {
+                playerLabel.textContent = 'Score';
+            }
+            const levelLabel = document.getElementById('levelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = 'Level';
+            }
 
             // Show direction controls by default (for menu state)
             document.getElementById('directionControls').style.display = 'block';
@@ -2576,6 +2663,20 @@
             const levelElement = document.getElementById('level');
             if (levelElement && levelElement.parentElement) {
                 levelElement.parentElement.style.display = 'none';
+            }
+
+            // 隐藏 AI 得分框并重置统计栏标签
+            const aiScoreBox = document.getElementById('aiScoreBox');
+            if (aiScoreBox) {
+                aiScoreBox.style.display = 'none';
+            }
+            const playerLabel = document.getElementById('playerLabel');
+            if (playerLabel) {
+                playerLabel.textContent = 'Score';
+            }
+            const levelLabel = document.getElementById('levelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = 'Level';
             }
 
             restartAIGame();
@@ -2625,6 +2726,20 @@
                 levelElement.parentElement.style.display = 'block';
             }
 
+            // 显示 AI 得分框并更新标签
+            const aiScoreBox = document.getElementById('aiScoreBox');
+            if (aiScoreBox) {
+                aiScoreBox.style.display = 'block';
+            }
+            const playerLabel = document.getElementById('playerLabel');
+            if (playerLabel) {
+                playerLabel.textContent = 'YOU';
+            }
+            const levelLabel = document.getElementById('levelLabel');
+            if (levelLabel) {
+                levelLabel.textContent = 'VS';
+            }
+
             restartAIVsYouGame();
         }
 
@@ -2641,8 +2756,10 @@
             aiDirection = {x: 0, y: 0};
 
             score = 0;
+            aiScore = 0;  // 重置 AI 分数
             playerWon = false;
             updateScore();
+            updateAIScore();  // 更新 AI 分数显示
             gameRunning = true;
             isGameRunning = true;
             generateFood();
@@ -2733,8 +2850,10 @@
                         break;
                     } else {
                         // Handle normal fruit
+                        aiScore += eatenItem.points;  // 增加 AI 分数
                         eatenItem.emoji = foods[i].emoji;
                         aiSnake[0].fruit = eatenItem;
+                        updateAIScore();  // 更新 AI 分数显示
                         foods.splice(i, 1);
                         foodEaten = true;
                         break;
