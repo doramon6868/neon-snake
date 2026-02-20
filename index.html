@@ -826,6 +826,7 @@
         const BASE_FOOD_COUNT = 5; // Base number of foods (will be adjusted for AI vs YOU mode)
         const BASE_FOOD_COUNT_AI_VS = 8; // AI vs YOU mode has more food
         const POWERUP_CHANCE = 0.25; // 25% chance for power-up instead of fruit (was 10%)
+        const FOOD_LIFETIME = 30000; // 食物寿命：30秒（毫秒）
 
         // Level system configuration (for Challenge Mode)
         const LEVEL_CONFIG = {
@@ -1074,6 +1075,20 @@
                 updateAI();
             }
 
+            // 检查食物寿命，移除过期食物并生成新食物
+            const currentTime = Date.now();
+            for (let i = foods.length - 1; i >= 0; i--) {
+                if (foods[i].spawnTime && (currentTime - foods[i].spawnTime) > FOOD_LIFETIME) {
+                    // 食物过期，移除它
+                    foods.splice(i, 1);
+                    // 生成新食物替换
+                    const newFood = generateSingleFood();
+                    if (newFood) {
+                        foods.push(newFood);
+                    }
+                }
+            }
+
             // If no direction set, don't move
             if (direction.x === 0 && direction.y === 0) {
                 return;
@@ -1203,7 +1218,8 @@
                     x: Math.floor(Math.random() * tileCount),
                     y: Math.floor(Math.random() * tileCount),
                     ...randomPowerUp,
-                    isPowerUp: true
+                    isPowerUp: true,
+                    spawnTime: Date.now() // 记录生成时间
                 };
             } else {
                 // Generate normal fruit
@@ -1211,7 +1227,8 @@
                 newItem = {
                     x: Math.floor(Math.random() * tileCount),
                     y: Math.floor(Math.random() * tileCount),
-                    ...randomFruit
+                    ...randomFruit,
+                    spawnTime: Date.now() // 记录生成时间
                 };
             }
 
@@ -1436,15 +1453,29 @@
             // Draw all foods with fruit emoji - on cream background
             foods.forEach(food => {
                 if (food.emoji) {
+                    // 计算食物剩余寿命比例
+                    const currentTime = Date.now();
+                    const age = currentTime - (food.spawnTime || currentTime);
+                    const remainingRatio = Math.max(0, 1 - age / FOOD_LIFETIME);
+                    const isExpiringSoon = remainingRatio < 0.33; // 最后10秒闪烁警告
+
                     // Draw cream background for fruit emoji
                     ctx.fillStyle = '#FFF9F5';
                     ctx.fillRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
 
-                    // Draw fruit emoji
+                    // 如果食物即将过期，添加闪烁的红色边框警告
+                    if (isExpiringSoon) {
+                        const blinkAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 100); // 闪烁效果
+                        ctx.strokeStyle = `rgba(255, 107, 107, ${blinkAlpha})`; /* 草莓红 */
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(food.x * gridSize + 2, food.y * gridSize + 2, gridSize - 4, gridSize - 4);
+                    }
+
+                    // Draw fruit emoji（即将过期时透明度降低）
                     ctx.font = `${gridSize * 0.8}px Arial, sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = '#6B5B73'; /* 炭灰 */
+                    ctx.fillStyle = isExpiringSoon ? `rgba(107, 91, 115, ${0.3 + remainingRatio * 0.7})` : '#6B5B73'; /* 炭灰 */
                     ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
 
                     // Draw point value
@@ -1454,6 +1485,16 @@
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
                         ctx.fillText(food.points + 'pts', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize - 3);
+                    }
+
+                    // 显示剩余时间（最后10秒显示倒计时）
+                    if (isExpiringSoon) {
+                        const remainingSeconds = Math.ceil((FOOD_LIFETIME - age) / 1000);
+                        ctx.font = `bold ${Math.min(gridSize * 0.35, 16)}px Orbitron, monospace`;
+                        ctx.fillStyle = '#FF6B6B'; /* 草莓红 */
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText(remainingSeconds + 's', food.x * gridSize + gridSize / 2, food.y * gridSize + 3);
                     }
                 }
             });
@@ -1852,7 +1893,8 @@
                         x: Math.floor(Math.random() * tileCount),
                         y: Math.floor(Math.random() * tileCount),
                         ...randomPowerUp,
-                        isPowerUp: true
+                        isPowerUp: true,
+                        spawnTime: Date.now() // 记录生成时间
                     };
 
                     // Check position
@@ -1892,7 +1934,8 @@
                     let newFood = {
                         x: Math.floor(Math.random() * tileCount),
                         y: Math.floor(Math.random() * tileCount),
-                        ...randomFruit
+                        ...randomFruit,
+                        spawnTime: Date.now() // 记录生成时间
                     };
 
                     // Check position
