@@ -78,11 +78,25 @@ AI 模式采用多策略决策系统：
 
 无需服务器，直接在浏览器中打开 `index.html` 即可。
 
+或使用本地 HTTP 服务器（以下任选其一，有哪个环境就用哪个）：
+
+**Node.js 环境：**
 ```bash
-# 或者使用简单的 HTTP 服务器
-python -m http.server 8000
-# 然后访问 http://localhost:8000
+npx serve .
+# 或
+npx http-server -p 8000
 ```
+
+**Python 环境：**
+```bash
+# Python 3
+python -m http.server 8000
+
+# Python 2
+python -m SimpleHTTPServer 8000
+```
+
+然后访问 http://localhost:8000
 
 ## 技术实现
 
